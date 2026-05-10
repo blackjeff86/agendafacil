@@ -153,7 +153,7 @@
     <div id="pageServicos" class="page">
       <div class="top-bar">
         <h2>Serviços</h2>
-        <button class="btn btn-sm btn-brand" style="width:auto" type="button" onclick="openModal('modalNovoServico')">+ Novo</button>
+        <button class="btn btn-sm btn-brand" style="width:auto" type="button" onclick="openServiceModal()">+ Novo</button>
       </div>
       <div class="scroll-area p-4" id="servicosList"></div>
     </div>
@@ -161,7 +161,7 @@
     <div id="pageProfissionais" class="page">
       <div class="top-bar">
         <h2>Profissionais</h2>
-        <button class="btn btn-sm btn-brand" style="width:auto" type="button" onclick="openModal('modalNovoProf')">+ Novo</button>
+        <button class="btn btn-sm btn-brand" style="width:auto" type="button" onclick="openProfessionalModal()">+ Novo</button>
       </div>
       <div class="scroll-area p-4" id="profissionaisList"></div>
     </div>
@@ -210,7 +210,7 @@
           </div>
           <button class="btn btn-wa" type="button" onclick="shareWhatsApp()">Compartilhar no WhatsApp</button>
           <div class="divider"></div>
-          <button class="btn btn-ghost" type="button" onclick="showPublicBooking()">Abrir página pública</button>
+          <button class="btn btn-ghost" type="button" onclick="openHostedPublicPage()">Abrir página pública</button>
         </div>
       </div>
     </div>
@@ -399,7 +399,7 @@
   <div class="modal-overlay" id="modalNovoServico">
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <div class="font-bold text-lg mb-4">Novo Serviço</div>
+      <div class="font-bold text-lg mb-4" id="serviceModalTitle">Novo Serviço</div>
       <div class="input-group"><label for="newServiceName">Nome do serviço</label><input type="text" id="newServiceName" placeholder="Ex: Escova modelada" /></div>
       <div class="input-group"><label for="newServiceDescription">Descrição</label><textarea id="newServiceDescription" placeholder="Descreva o serviço"></textarea></div>
       <div class="input-group"><label for="newServiceCategory">Categoria</label><select id="newServiceCategory"><option>Corte</option><option>Barba</option><option>Coloração</option><option>Tratamento</option><option>Combo</option></select></div>
@@ -412,15 +412,15 @@
         <label class="font-semibold text-sm" for="newServiceActive">Ativo</label>
         <label class="toggle"><input type="checkbox" id="newServiceActive" checked /><span class="toggle-slider"></span></label>
       </div>
-      <button class="btn btn-brand" type="button" onclick="saveService()">Salvar Serviço</button>
-      <button class="btn btn-ghost mt-2" type="button" onclick="closeModal('modalNovoServico')">Cancelar</button>
+      <button class="btn btn-brand" id="serviceModalSaveBtn" type="button" onclick="saveService()">Salvar Serviço</button>
+      <button class="btn btn-ghost mt-2" type="button" onclick="closeServiceModal()">Cancelar</button>
     </div>
   </div>
 
   <div class="modal-overlay" id="modalNovoProf">
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <div class="font-bold text-lg mb-4">Novo Profissional</div>
+      <div class="font-bold text-lg mb-4" id="professionalModalTitle">Novo Profissional</div>
       <div class="input-group"><label for="newProfName">Nome</label><input type="text" id="newProfName" placeholder="Nome completo" /></div>
       <div class="input-group"><label for="newProfRole">Especialidade / Cargo</label><input type="text" id="newProfRole" placeholder="Ex: Nail designer" /></div>
       <div class="input-group"><label for="newProfEmoji">Emoji</label><input type="text" id="newProfEmoji" placeholder="👤" maxlength="4" /></div>
@@ -429,8 +429,8 @@
         <label class="font-semibold text-sm" for="newProfActive">Ativo</label>
         <label class="toggle"><input type="checkbox" id="newProfActive" checked /><span class="toggle-slider"></span></label>
       </div>
-      <button class="btn btn-brand" type="button" onclick="saveProfessional()">Salvar</button>
-      <button class="btn btn-ghost mt-2" type="button" onclick="closeModal('modalNovoProf')">Cancelar</button>
+      <button class="btn btn-brand" id="professionalModalSaveBtn" type="button" onclick="saveProfessional()">Salvar</button>
+      <button class="btn btn-ghost mt-2" type="button" onclick="closeProfessionalModal()">Cancelar</button>
     </div>
   </div>
 

@@ -1,5 +1,6 @@
 const SUPABASE_URL = "https://vjwrgibbirtaeyqbzoxk.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ha-xTX201rlnk1_eVm46pg_XZOrdl3v";
+const APP_BASE_URL = "https://agendafacil-two.vercel.app";
 
 let supabaseClient = null;
 
@@ -131,6 +132,8 @@ const state = {
   hours: [],
   currentFilter: "todos",
   selectedAppointment: null,
+  editingServiceId: null,
+  editingProfessionalId: null,
   publicData: {
     business: null,
     services: [],
@@ -170,6 +173,14 @@ function exposeActionsToWindow() {
     saveAppointment,
     saveService,
     saveProfessional,
+    openServiceModal,
+    closeServiceModal,
+    editService,
+    deleteService,
+    openProfessionalModal,
+    closeProfessionalModal,
+    editProfessional,
+    deleteProfessional,
     pubBack,
     startBooking,
     goNextFromService,
@@ -185,6 +196,7 @@ function exposeActionsToWindow() {
     shareWhatsApp,
     openBusinessWhatsApp,
     openBusinessInstagram,
+    openHostedPublicPage,
     openModal,
     closeModal,
     toggleHourInputs,
@@ -476,6 +488,10 @@ function renderServicos() {
                   <span class="text-sm text-sub">⏱ ${service.duration} min</span>
                   <span class="chip" style="margin:0;padding:2px 8px;font-size:10px;">${service.category || "Servico"}</span>
                 </div>
+                <div class="card-actions">
+                  <button class="btn btn-link btn-sm" type="button" onclick="editService('${service.id}')">Editar</button>
+                  <button class="btn btn-danger btn-sm" type="button" onclick="deleteService('${service.id}')">Excluir</button>
+                </div>
               </div>
             </div>`
         )
@@ -502,6 +518,10 @@ function renderProfissionais() {
                 </div>
                 <div class="text-sm text-sub">${professional.role || ""}</div>
                 <div class="mt-1">${serviceNames.map((name) => `<span class="chip" style="margin-bottom:0;">${name}</span>`).join("")}</div>
+                <div class="card-actions">
+                  <button class="btn btn-link btn-sm" type="button" onclick="editProfessional('${professional.id}')">Editar</button>
+                  <button class="btn btn-danger btn-sm" type="button" onclick="deleteProfessional('${professional.id}')">Excluir</button>
+                </div>
               </div>
             </div>`;
         })
@@ -545,7 +565,7 @@ function populateModalOptions() {
 
 function updatePublicLink() {
   if (!state.business) return;
-  const publicUrl = `${window.location.origin}${window.location.pathname}?slug=${state.business.slug}`;
+  const publicUrl = getPublicAppUrl(state.business.slug);
   document.getElementById("bizLink").textContent = publicUrl;
 }
 
@@ -826,6 +846,7 @@ async function saveBusinessProfile() {
 async function saveService() {
   if (!state.business) return;
   const client = getSupabaseClient();
+  const isEditing = Boolean(state.editingServiceId);
   const payload = {
     business_id: state.business.id,
     name: document.getElementById("newServiceName").value.trim(),
@@ -844,11 +865,13 @@ async function saveService() {
 
   showLoading(true);
   try {
-    const { error } = await client.from("services").insert(payload);
+    const { error } = isEditing
+      ? await client.from("services").update(payload).eq("id", state.editingServiceId)
+      : await client.from("services").insert(payload);
     if (error) throw error;
-    closeModal("modalNovoServico");
+    closeServiceModal();
     resetServiceModal();
-    showToast("Servico salvo com sucesso.");
+    showToast(isEditing ? "Servico atualizado com sucesso." : "Servico salvo com sucesso.");
     await refreshAllBusinessData();
   } catch (error) {
     console.error(error);
@@ -861,6 +884,7 @@ async function saveService() {
 async function saveProfessional() {
   if (!state.business) return;
   const client = getSupabaseClient();
+  const isEditing = Boolean(state.editingProfessionalId);
 
   const selectedServiceIds = Array.from(document.getElementById("newProfServices").selectedOptions).map((option) => option.value);
   const payload = {
@@ -878,8 +902,15 @@ async function saveProfessional() {
 
   showLoading(true);
   try {
-    const { data: professional, error } = await client.from("professionals").insert(payload).select().single();
+    const { data: professional, error } = isEditing
+      ? await client.from("professionals").update(payload).eq("id", state.editingProfessionalId).select().single()
+      : await client.from("professionals").insert(payload).select().single();
     if (error) throw error;
+
+    if (isEditing) {
+      const { error: deletePivotError } = await client.from("professional_services").delete().eq("professional_id", professional.id);
+      if (deletePivotError) throw deletePivotError;
+    }
 
     if (selectedServiceIds.length) {
       const { error: pivotError } = await client.from("professional_services").insert(
@@ -891,9 +922,9 @@ async function saveProfessional() {
       if (pivotError) throw pivotError;
     }
 
-    closeModal("modalNovoProf");
+    closeProfessionalModal();
     resetProfessionalModal();
-    showToast("Profissional salvo com sucesso.");
+    showToast(isEditing ? "Profissional atualizado com sucesso." : "Profissional salvo com sucesso.");
     await refreshAllBusinessData();
   } catch (error) {
     console.error(error);
@@ -1448,6 +1479,14 @@ function shareWhatsApp() {
   window.open(`https://wa.me/?text=${text}`, "_blank");
 }
 
+function openHostedPublicPage() {
+  if (!state.business?.slug) {
+    showToast("Salve o negocio para gerar o link publico.");
+    return;
+  }
+  window.open(getPublicAppUrl(state.business.slug), "_blank");
+}
+
 function openBusinessWhatsApp() {
   const phone = onlyDigits(state.publicData.business?.whatsapp || "");
   if (!phone) {
@@ -1648,8 +1687,12 @@ function getErrorMessage(error) {
 }
 
 function resetServiceModal() {
+  state.editingServiceId = null;
+  document.getElementById("serviceModalTitle").textContent = "Novo Serviço";
+  document.getElementById("serviceModalSaveBtn").textContent = "Salvar Serviço";
   document.getElementById("newServiceName").value = "";
   document.getElementById("newServiceDescription").value = "";
+  document.getElementById("newServiceCategory").value = "Corte";
   document.getElementById("newServicePrice").value = "";
   document.getElementById("newServiceDuration").value = "";
   document.getElementById("newServiceIcon").value = "";
@@ -1657,6 +1700,9 @@ function resetServiceModal() {
 }
 
 function resetProfessionalModal() {
+  state.editingProfessionalId = null;
+  document.getElementById("professionalModalTitle").textContent = "Novo Profissional";
+  document.getElementById("professionalModalSaveBtn").textContent = "Salvar";
   document.getElementById("newProfName").value = "";
   document.getElementById("newProfRole").value = "";
   document.getElementById("newProfEmoji").value = "";
@@ -1671,4 +1717,115 @@ function resetAppointmentModal() {
   document.getElementById("newApptPhone").value = "";
   document.getElementById("newApptDate").value = "";
   document.getElementById("newApptTime").value = "";
+}
+
+function openServiceModal() {
+  resetServiceModal();
+  openModal("modalNovoServico");
+}
+
+function closeServiceModal() {
+  closeModal("modalNovoServico");
+  resetServiceModal();
+}
+
+function editService(serviceId) {
+  const service = state.services.find((item) => item.id === serviceId);
+  if (!service) return;
+  state.editingServiceId = serviceId;
+  document.getElementById("serviceModalTitle").textContent = "Editar Serviço";
+  document.getElementById("serviceModalSaveBtn").textContent = "Salvar Alterações";
+  document.getElementById("newServiceName").value = service.name || "";
+  document.getElementById("newServiceDescription").value = service.description || "";
+  document.getElementById("newServiceCategory").value = service.category || "Corte";
+  document.getElementById("newServicePrice").value = service.price || "";
+  document.getElementById("newServiceDuration").value = service.duration || "";
+  document.getElementById("newServiceIcon").value = service.icon || "";
+  document.getElementById("newServiceActive").checked = Boolean(service.active);
+  openModal("modalNovoServico");
+}
+
+async function deleteService(serviceId) {
+  const service = state.services.find((item) => item.id === serviceId);
+  if (!service) return;
+  if (!window.confirm(`Excluir o serviço "${service.name}"?`)) {
+    return;
+  }
+  if (state.appointments.some((item) => item.service_id === serviceId)) {
+    showToast("Esse servico ja possui agendamentos e nao pode ser excluido.");
+    return;
+  }
+
+  showLoading(true);
+  try {
+    const client = getSupabaseClient();
+    const { error } = await client.from("services").delete().eq("id", serviceId);
+    if (error) throw error;
+    showToast("Servico excluido com sucesso.");
+    await refreshAllBusinessData();
+  } catch (error) {
+    console.error(error);
+    showToast(getErrorMessage(error));
+  } finally {
+    showLoading(false);
+  }
+}
+
+function openProfessionalModal() {
+  resetProfessionalModal();
+  openModal("modalNovoProf");
+}
+
+function closeProfessionalModal() {
+  closeModal("modalNovoProf");
+  resetProfessionalModal();
+}
+
+function editProfessional(professionalId) {
+  const professional = state.professionals.find((item) => item.id === professionalId);
+  if (!professional) return;
+  state.editingProfessionalId = professionalId;
+  document.getElementById("professionalModalTitle").textContent = "Editar Profissional";
+  document.getElementById("professionalModalSaveBtn").textContent = "Salvar Alterações";
+  document.getElementById("newProfName").value = professional.name || "";
+  document.getElementById("newProfRole").value = professional.role || "";
+  document.getElementById("newProfEmoji").value = professional.emoji || "";
+  document.getElementById("newProfActive").checked = Boolean(professional.active);
+  const assignedServiceIds = new Set(
+    state.professionalServices.filter((item) => item.professional_id === professionalId).map((item) => item.service_id)
+  );
+  Array.from(document.getElementById("newProfServices").options).forEach((option) => {
+    option.selected = assignedServiceIds.has(option.value);
+  });
+  openModal("modalNovoProf");
+}
+
+async function deleteProfessional(professionalId) {
+  const professional = state.professionals.find((item) => item.id === professionalId);
+  if (!professional) return;
+  if (!window.confirm(`Excluir o profissional "${professional.name}"?`)) {
+    return;
+  }
+  if (state.appointments.some((item) => item.professional_id === professionalId)) {
+    showToast("Esse profissional ja possui agendamentos e nao pode ser excluido.");
+    return;
+  }
+
+  showLoading(true);
+  try {
+    const client = getSupabaseClient();
+    const { error } = await client.from("professionals").delete().eq("id", professionalId);
+    if (error) throw error;
+    showToast("Profissional excluido com sucesso.");
+    await refreshAllBusinessData();
+  } catch (error) {
+    console.error(error);
+    showToast(getErrorMessage(error));
+  } finally {
+    showLoading(false);
+  }
+}
+
+function getPublicAppUrl(slug) {
+  return `${APP_BASE_URL.replace(/\/$/, "")}/?slug=${slug}`;
 }

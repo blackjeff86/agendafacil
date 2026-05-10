@@ -39,6 +39,7 @@
   .btn-success{background:var(--success);color:#fff;}
   .btn-ghost{background:var(--brand-light);color:var(--brand);}
   .btn-wa{background:#25D366;color:#fff;}
+  .btn-link{background:#fff;color:var(--sub);border:1px solid var(--border);}
   /* ── INPUTS ── */
   .input-group{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
   .input-group label{font-size:13px;font-weight:600;color:var(--text);}
@@ -77,6 +78,8 @@
   .service-card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px;cursor:pointer;border:2px solid transparent;transition:border .2s;}
   .service-card.selected{border-color:var(--brand);}
   .service-icon{width:48px;height:48px;border-radius:12px;background:var(--brand-light);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+  .card-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .card-actions .btn{width:auto;}
   /* ── PROFESSIONAL CARD ── */
   .prof-card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px;cursor:pointer;border:2px solid transparent;transition:border .2s;}
   .prof-card.selected{border-color:var(--brand);}
