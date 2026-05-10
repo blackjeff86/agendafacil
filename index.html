@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>AgendaFácil - Sistema de Agendamento</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="toast" id="toast"></div>
+
+  <div class="loading-overlay hidden" id="loadingOverlay">
+    <div class="loading-card">
+      <div class="spinner"></div>
+      <div class="font-bold">Conectando com o Supabase...</div>
+      <div class="text-sm text-sub">Carregando dados do seu sistema.</div>
+    </div>
+  </div>
+
+  <section id="loginPage">
+    <div class="login-card">
+      <div class="logo-big">✂️</div>
+      <div class="brand-name">AgendaFácil</div>
+      <div class="brand-sub">SaaS de agendamento para salão, barbearia e estética</div>
+      <div class="connection-badge">Supabase conectado</div>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabLogin" type="button" onclick="switchAuthMode('login')">Entrar</button>
+        <button class="auth-tab" id="tabSignup" type="button" onclick="switchAuthMode('signup')">Criar conta</button>
+      </div>
+
+      <form id="loginForm" class="stack" onsubmit="event.preventDefault(); doLogin();">
+        <div class="input-group">
+          <label for="loginEmail">E-mail</label>
+          <input type="email" id="loginEmail" placeholder="seu@email.com" required />
+        </div>
+        <div class="input-group">
+          <label for="loginPass">Senha</label>
+          <input type="password" id="loginPass" placeholder="Sua senha" required />
+        </div>
+        <button class="btn btn-brand mt-2" type="submit">Entrar</button>
+      </form>
+
+      <form id="signupForm" class="stack hidden" onsubmit="event.preventDefault(); doSignup();">
+        <div class="input-group">
+          <label for="signupBusinessName">Nome do negócio</label>
+          <input type="text" id="signupBusinessName" placeholder="Ex: Studio Bella" required />
+        </div>
+        <div class="input-group">
+          <label for="signupSlug">Link público</label>
+          <input type="text" id="signupSlug" placeholder="studio-bella" required />
+          <div class="helper-text">Esse texto vira seu link de agendamento.</div>
+        </div>
+        <div class="input-group">
+          <label for="signupCategory">Categoria</label>
+          <select id="signupCategory">
+            <option>Salão de Beleza</option>
+            <option>Barbearia</option>
+            <option>Manicure e Pedicure</option>
+            <option>Clínica Estética</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label for="signupEmail">E-mail</label>
+          <input type="email" id="signupEmail" placeholder="contato@negocio.com" required />
+        </div>
+        <div class="input-group">
+          <label for="signupPass">Senha</label>
+          <input type="password" id="signupPass" placeholder="Crie uma senha" required />
+        </div>
+        <button class="btn btn-brand mt-2" type="submit">Criar conta e negócio</button>
+      </form>
+
+      <div class="divider"></div>
+      <button class="btn btn-ghost" id="btnPublicPreview" type="button" onclick="showPublicBooking()">Ver página pública</button>
+    </div>
+  </section>
+
+  <section id="setupPage" class="hidden auth-shell">
+    <div class="login-card">
+      <div class="brand-name" style="font-size:22px;">Finalize seu negócio</div>
+      <div class="brand-sub">Precisamos de algumas informações antes de liberar o painel.</div>
+      <form class="stack" onsubmit="event.preventDefault(); completeInitialSetup();">
+        <div class="input-group">
+          <label for="setupBusinessName">Nome do negócio</label>
+          <input type="text" id="setupBusinessName" placeholder="Ex: Studio Bella" required />
+        </div>
+        <div class="input-group">
+          <label for="setupSlug">Slug público</label>
+          <input type="text" id="setupSlug" placeholder="studio-bella" required />
+        </div>
+        <div class="input-group">
+          <label for="setupCategory">Categoria</label>
+          <select id="setupCategory">
+            <option>Salão de Beleza</option>
+            <option>Barbearia</option>
+            <option>Manicure e Pedicure</option>
+            <option>Clínica Estética</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label for="setupDescription">Descrição</label>
+          <textarea id="setupDescription" placeholder="Fale um pouco sobre seu espaço."></textarea>
+        </div>
+        <div class="input-group">
+          <label for="setupWhatsapp">WhatsApp</label>
+          <input type="tel" id="setupWhatsapp" placeholder="(11) 99999-0000" inputmode="numeric" maxlength="15" data-br-phone="true" />
+        </div>
+        <button class="btn btn-brand" type="submit">Criar meu espaço</button>
+        <button class="btn btn-ghost" type="button" onclick="logout()">Sair</button>
+      </form>
+    </div>
+  </section>
+
+  <div id="adminShell" class="hidden">
+    <div id="pageDashboard" class="page">
+      <div class="top-bar">
+        <div>
+          <div style="font-size:13px;color:var(--sub);">Olá, 👋</div>
+          <h2 id="greetingName">Bem-vindo</h2>
+        </div>
+        <div class="avatar" id="avatarInitial" style="background:var(--brand);color:#fff;">A</div>
+      </div>
+      <div class="scroll-area p-4">
+        <div class="section-title">Hoje · <span id="todayDate"></span></div>
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-icon">📅</div><div class="stat-val" id="statTodayCount">0</div><div class="stat-label">Agendamentos hoje</div></div>
+          <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-val" id="statRevenue">R$0</div><div class="stat-label">Receita prevista</div></div>
+          <div class="stat-card"><div class="stat-icon">⭐</div><div class="stat-val" id="statTopService">-</div><div class="stat-label">Serviço mais pedido</div></div>
+          <div class="stat-card"><div class="stat-icon">👑</div><div class="stat-val" id="statTopProfessional">-</div><div class="stat-label">Profissional destaque</div></div>
+        </div>
+        <div class="section-title">Próximos agendamentos</div>
+        <div id="dashApptList"></div>
+      </div>
+    </div>
+
+    <div id="pageAgendamentos" class="page">
+      <div class="top-bar">
+        <h2>Agendamentos</h2>
+        <button class="btn btn-sm btn-brand" style="width:auto" type="button" onclick="openModal('modalNovoAppt')">+ Novo</button>
+      </div>
+      <div class="scroll-area p-4">
+        <div class="flex gap-2 mb-3">
+          <button class="btn btn-brand btn-sm appt-filter-btn" style="flex:1" type="button" data-filter="todos" onclick="filterAppt('todos', event)">Todos</button>
+          <button class="btn btn-ghost btn-sm appt-filter-btn" style="flex:1" type="button" data-filter="confirmado" onclick="filterAppt('confirmado', event)">Confirmados</button>
+          <button class="btn btn-ghost btn-sm appt-filter-btn" style="flex:1" type="button" data-filter="pendente" onclick="filterAppt('pendente', event)">Pendentes</button>
+        </div>
+        <div id="apptList"></div>
+      </div>
+    </div>
+
+    <div id="pageServicos" class="page">
+      <div class="top-bar">
+        <h2>Serviços</h2>
+        <button class="btn btn-sm btn-brand" style="width:auto" type="button" onclick="openModal('modalNovoServico')">+ Novo</button>
+      </div>
+      <div class="scroll-area p-4" id="servicosList"></div>
+    </div>
+
+    <div id="pageProfissionais" class="page">
+      <div class="top-bar">
+        <h2>Profissionais</h2>
+        <button class="btn btn-sm btn-brand" style="width:auto" type="button" onclick="openModal('modalNovoProf')">+ Novo</button>
+      </div>
+      <div class="scroll-area p-4" id="profissionaisList"></div>
+    </div>
+
+    <div id="pageMeuNegocio" class="page">
+      <div class="top-bar"><h2>Meu Negócio</h2></div>
+      <div class="scroll-area p-4">
+        <div class="biz-cover"><div class="biz-avatar" id="bizAvatarPreview">✂️</div></div>
+        <div class="section-title" style="margin-top:8px;">Informações</div>
+        <div class="card">
+          <div class="input-group"><label for="businessName">Nome do Negócio</label><input type="text" id="businessName" /></div>
+          <div class="input-group"><label for="businessSlug">Slug público</label><input type="text" id="businessSlug" /></div>
+          <div class="input-group"><label for="businessCategory">Categoria</label>
+            <select id="businessCategory">
+              <option>Barbearia</option>
+              <option>Salão de Beleza</option>
+              <option>Manicure e Pedicure</option>
+              <option>Clínica Estética</option>
+            </select>
+          </div>
+          <div class="input-group"><label for="businessDescription">Descrição</label><textarea id="businessDescription"></textarea></div>
+          <div class="input-group"><label for="businessWhatsapp">WhatsApp</label><input type="tel" id="businessWhatsapp" inputmode="numeric" maxlength="15" data-br-phone="true" placeholder="(11) 99999-0000" /></div>
+          <div class="input-group"><label for="businessInstagram">Instagram</label><input type="text" id="businessInstagram" /></div>
+          <div class="input-group"><label for="businessAddress">Endereço</label><input type="text" id="businessAddress" /></div>
+          <div class="input-group"><label for="businessLogoEmoji">Emoji/Logo</label><input type="text" id="businessLogoEmoji" maxlength="4" /></div>
+        </div>
+        <div class="section-title">Horários de Funcionamento</div>
+        <div class="card">
+          <div id="horariosList"></div>
+        </div>
+        <button class="btn btn-brand" type="button" onclick="saveBusinessProfile()">Salvar Alterações</button>
+        <button class="btn btn-ghost mt-2" type="button" onclick="logout()">Sair</button>
+      </div>
+    </div>
+
+    <div id="pageLinkAgendamento" class="page">
+      <div class="top-bar"><h2>Link de Agendamento</h2></div>
+      <div class="scroll-area p-4">
+        <div class="card text-center" style="padding:24px;">
+          <div style="font-size:48px;margin-bottom:12px;">🔗</div>
+          <div class="font-bold text-lg mb-2">Seu link exclusivo</div>
+          <div class="text-sm text-sub mb-4">Compartilhe no WhatsApp, Instagram ou bio do seu negócio.</div>
+          <div class="link-box">
+            <span id="bizLink">carregando...</span>
+            <button class="btn btn-sm btn-ghost" style="width:auto;flex-shrink:0;" type="button" onclick="copyLink()">Copiar</button>
+          </div>
+          <button class="btn btn-wa" type="button" onclick="shareWhatsApp()">Compartilhar no WhatsApp</button>
+          <div class="divider"></div>
+          <button class="btn btn-ghost" type="button" onclick="showPublicBooking()">Abrir página pública</button>
+        </div>
+      </div>
+    </div>
+
+    <nav class="bottom-nav" id="bottomNav">
+      <button class="nav-item active" data-page="pageDashboard" type="button" onclick="navTo('pageDashboard')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        Início
+      </button>
+      <button class="nav-item" data-page="pageAgendamentos" type="button" onclick="navTo('pageAgendamentos')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Agenda
+      </button>
+      <button class="nav-item" data-page="pageServicos" type="button" onclick="navTo('pageServicos')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/></svg>
+        Serviços
+      </button>
+      <button class="nav-item" data-page="pageProfissionais" type="button" onclick="navTo('pageProfissionais')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Equipe
+      </button>
+      <button class="nav-item" data-page="pageMeuNegocio" type="button" onclick="navTo('pageMeuNegocio')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+        Negócio
+      </button>
+      <button class="nav-item" data-page="pageLinkAgendamento" type="button" onclick="navTo('pageLinkAgendamento')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path stroke-linecap="round" stroke-linejoin="round" d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+        Link
+      </button>
+    </nav>
+  </div>
+
+  <div id="publicShell" class="hidden">
+    <div id="pubStep0" class="page page-nopad active">
+      <div class="pub-hero">
+        <div class="biz-logo" id="publicHeroEmoji">✂️</div>
+        <h1 id="publicHeroName">AgendaFácil</h1>
+        <p id="publicHeroDescription">Escolha um serviço e reserve seu horário.</p>
+        <div class="meta">
+          <span id="publicHeroAddress">📍 Seu endereço</span>
+          <span id="publicHeroWhatsapp">💬 WhatsApp</span>
+          <span id="publicHeroHours">🕐 09h-18h</span>
+        </div>
+      </div>
+      <div class="p-4" style="flex:1;">
+        <div class="card text-center" style="padding:20px;">
+          <div style="font-size:32px;margin-bottom:8px;">👇</div>
+          <div class="font-bold text-lg mb-1">Como deseja agendar?</div>
+          <div class="text-sm text-sub mb-4">Escolha o melhor fluxo para o seu cliente.</div>
+          <div class="flex gap-3">
+            <button class="btn btn-brand flex-1" type="button" onclick="startBooking('service')">✂️ Por Serviço</button>
+            <button class="btn btn-outline flex-1" type="button" onclick="startBooking('prof')">👤 Por Profissional</button>
+          </div>
+        </div>
+        <div class="section-title mt-3">Nossos serviços</div>
+        <div id="pubServicePreview"></div>
+        <div class="section-title mt-2">Nossa equipe</div>
+        <div id="pubProfPreview"></div>
+        <div class="card mt-2" style="padding:14px;">
+          <div class="flex items-center gap-3">
+            <div style="font-size:28px;">📍</div>
+            <div>
+              <div class="font-semibold text-sm" id="publicAddressCard">Seu endereço aqui</div>
+              <div class="text-xs text-sub" id="publicInstagramCard">@instagram</div>
+            </div>
+          </div>
+          <div class="divider" style="margin:10px 0;"></div>
+          <div class="flex gap-2">
+            <button class="btn btn-ghost btn-sm flex-1" type="button" onclick="openBusinessWhatsApp()">💬 WhatsApp</button>
+            <button class="btn btn-ghost btn-sm flex-1" type="button" onclick="openBusinessInstagram()">📸 Instagram</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="pubStep1" class="page page-nopad hidden">
+      <div class="top-bar">
+        <button class="back-btn" type="button" onclick="pubBack()">←</button>
+        <h2>Escolha o serviço</h2>
+        <div style="width:40px;"></div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:25%"></div></div>
+      <div class="scroll-area p-4" id="pubServiceList"></div>
+      <div class="p-4" style="padding-top:0;">
+        <button class="btn btn-brand" id="btnNextFromService" type="button" onclick="goNextFromService()" disabled>Continuar</button>
+      </div>
+    </div>
+
+    <div id="pubStep2" class="page page-nopad hidden">
+      <div class="top-bar">
+        <button class="back-btn" type="button" onclick="pubBack()">←</button>
+        <h2>Escolha o profissional</h2>
+        <div style="width:40px;"></div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:50%"></div></div>
+      <div class="scroll-area p-4" id="pubProfList"></div>
+      <div class="p-4" style="padding-top:0;">
+        <button class="btn btn-brand" id="btnNextFromProf" type="button" onclick="goNextFromProf()" disabled>Continuar</button>
+      </div>
+    </div>
+
+    <div id="pubStep3" class="page page-nopad hidden">
+      <div class="top-bar">
+        <button class="back-btn" type="button" onclick="pubBack()">←</button>
+        <h2>Data e Horário</h2>
+        <div style="width:40px;"></div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:75%"></div></div>
+      <div class="scroll-area p-4">
+        <div class="section-title">Selecione a data</div>
+        <div class="date-scroll" id="dateScroll"></div>
+        <div class="section-title">Horários disponíveis</div>
+        <div class="time-grid" id="timeGrid"></div>
+      </div>
+      <div class="p-4" style="padding-top:0;">
+        <button class="btn btn-brand" id="btnNextFromDateTime" type="button" onclick="pubGoStep(4)" disabled>Continuar</button>
+      </div>
+    </div>
+
+    <div id="pubStep4" class="page page-nopad hidden">
+      <div class="top-bar">
+        <button class="back-btn" type="button" onclick="pubBack()">←</button>
+        <h2>Seus dados</h2>
+        <div style="width:40px;"></div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:88%"></div></div>
+      <div class="scroll-area p-4">
+        <div class="card">
+          <div class="section-title" style="margin-bottom:12px;">Resumo do agendamento</div>
+          <div class="summary-row"><span class="label">Serviço</span><span class="value" id="sumService">—</span></div>
+          <div class="summary-row"><span class="label">Profissional</span><span class="value" id="sumProf">—</span></div>
+          <div class="summary-row"><span class="label">Data</span><span class="value" id="sumDate">—</span></div>
+          <div class="summary-row"><span class="label">Horário</span><span class="value" id="sumTime">—</span></div>
+          <div class="summary-row"><span class="label">Duração</span><span class="value" id="sumDuration">—</span></div>
+          <div class="summary-row"><span class="label" style="font-weight:700;">Valor</span><span class="value text-brand" id="sumPrice" style="font-size:18px;">—</span></div>
+        </div>
+        <div class="card mt-3">
+          <div class="input-group"><label for="clientName">Seu nome *</label><input type="text" id="clientName" placeholder="João Silva" /></div>
+          <div class="input-group"><label for="clientPhone">WhatsApp *</label><input type="tel" id="clientPhone" placeholder="(11) 99999-0000" inputmode="numeric" maxlength="15" data-br-phone="true" /></div>
+          <div class="input-group"><label for="clientNotes">Observações (opcional)</label><textarea id="clientNotes" placeholder="Ex: corte mais baixo nas laterais."></textarea></div>
+        </div>
+      </div>
+      <div class="p-4" style="padding-top:0;">
+        <button class="btn btn-brand" type="button" onclick="confirmBooking()">Confirmar Agendamento</button>
+      </div>
+    </div>
+
+    <div id="pubSuccess" class="success-screen hidden" style="display:none;">
+      <div class="success-icon">🎉</div>
+      <h1 style="font-size:26px;font-weight:800;margin-bottom:8px;">Agendamento reservado<br />com sucesso!</h1>
+      <p style="opacity:.9;font-size:15px;margin-bottom:28px;">Seu pedido foi salvo no sistema e já aparece no painel.</p>
+      <div style="background:rgba(255,255,255,.2);border-radius:16px;padding:20px;width:100%;text-align:left;margin-bottom:24px;">
+        <div class="summary-row" style="border-bottom-color:rgba(255,255,255,.3);">
+          <span class="label" style="color:rgba(255,255,255,.8);">Serviço</span>
+          <span class="value" style="color:#fff;" id="successService">—</span>
+        </div>
+        <div class="summary-row" style="border-bottom-color:rgba(255,255,255,.3);">
+          <span class="label" style="color:rgba(255,255,255,.8);">Profissional</span>
+          <span class="value" style="color:#fff;" id="successProf">—</span>
+        </div>
+        <div class="summary-row" style="border-bottom-color:rgba(255,255,255,.3);">
+          <span class="label" style="color:rgba(255,255,255,.8);">Data e Hora</span>
+          <span class="value" style="color:#fff;" id="successDateTime">—</span>
+        </div>
+      </div>
+      <button class="btn btn-wa" style="max-width:360px;" type="button" onclick="sendWAConfirmation()">Ver mensagem de confirmação</button>
+      <button style="background:none;border:2px solid rgba(255,255,255,.5);border-radius:12px;color:#fff;padding:14px 20px;font-size:15px;font-weight:600;cursor:pointer;width:100%;max-width:360px;margin-top:12px;" type="button" onclick="showPublicBooking()">Fazer novo agendamento</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalNovoAppt">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="font-bold text-lg mb-4">Novo Agendamento</div>
+      <div class="input-group"><label for="newApptClient">Cliente</label><input type="text" id="newApptClient" placeholder="Nome do cliente" /></div>
+      <div class="input-group"><label for="newApptPhone">Telefone/WhatsApp</label><input type="tel" id="newApptPhone" placeholder="(11) 99999-0000" inputmode="numeric" maxlength="15" data-br-phone="true" /></div>
+      <div class="input-group"><label for="newApptService">Serviço</label><select id="newApptService"></select></div>
+      <div class="input-group"><label for="newApptProfessional">Profissional</label><select id="newApptProfessional"></select></div>
+      <div class="input-group"><label for="newApptDate">Data</label><input type="date" id="newApptDate" /></div>
+      <div class="input-group"><label for="newApptTime">Horário</label><input type="time" id="newApptTime" /></div>
+      <button class="btn btn-brand mt-2" type="button" onclick="saveAppointment()">Salvar Agendamento</button>
+      <button class="btn btn-ghost mt-2" type="button" onclick="closeModal('modalNovoAppt')">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalNovoServico">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="font-bold text-lg mb-4">Novo Serviço</div>
+      <div class="input-group"><label for="newServiceName">Nome do serviço</label><input type="text" id="newServiceName" placeholder="Ex: Escova modelada" /></div>
+      <div class="input-group"><label for="newServiceDescription">Descrição</label><textarea id="newServiceDescription" placeholder="Descreva o serviço"></textarea></div>
+      <div class="input-group"><label for="newServiceCategory">Categoria</label><select id="newServiceCategory"><option>Corte</option><option>Barba</option><option>Coloração</option><option>Tratamento</option><option>Combo</option></select></div>
+      <div class="flex gap-3">
+        <div class="input-group" style="flex:1;"><label for="newServicePrice">Preço (R$)</label><input type="number" id="newServicePrice" min="0" step="0.01" placeholder="0,00" /></div>
+        <div class="input-group" style="flex:1;"><label for="newServiceDuration">Duração (min)</label><input type="number" id="newServiceDuration" min="5" step="5" placeholder="60" /></div>
+      </div>
+      <div class="input-group"><label for="newServiceIcon">Emoji/Ícone</label><input type="text" id="newServiceIcon" placeholder="✂️" maxlength="4" /></div>
+      <div class="flex items-center gap-3 mb-4">
+        <label class="font-semibold text-sm" for="newServiceActive">Ativo</label>
+        <label class="toggle"><input type="checkbox" id="newServiceActive" checked /><span class="toggle-slider"></span></label>
+      </div>
+      <button class="btn btn-brand" type="button" onclick="saveService()">Salvar Serviço</button>
+      <button class="btn btn-ghost mt-2" type="button" onclick="closeModal('modalNovoServico')">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalNovoProf">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="font-bold text-lg mb-4">Novo Profissional</div>
+      <div class="input-group"><label for="newProfName">Nome</label><input type="text" id="newProfName" placeholder="Nome completo" /></div>
+      <div class="input-group"><label for="newProfRole">Especialidade / Cargo</label><input type="text" id="newProfRole" placeholder="Ex: Nail designer" /></div>
+      <div class="input-group"><label for="newProfEmoji">Emoji</label><input type="text" id="newProfEmoji" placeholder="👤" maxlength="4" /></div>
+      <div class="input-group"><label for="newProfServices">Serviços realizados</label><select id="newProfServices" multiple style="height:120px;"></select></div>
+      <div class="flex items-center gap-3 mb-4">
+        <label class="font-semibold text-sm" for="newProfActive">Ativo</label>
+        <label class="toggle"><input type="checkbox" id="newProfActive" checked /><span class="toggle-slider"></span></label>
+      </div>
+      <button class="btn btn-brand" type="button" onclick="saveProfessional()">Salvar</button>
+      <button class="btn btn-ghost mt-2" type="button" onclick="closeModal('modalNovoProf')">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalApptDetail">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="font-bold text-lg mb-1" id="detailClientName">Cliente</div>
+      <div class="text-sm text-sub mb-4" id="detailClientPhone"></div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="summary-row"><span class="label">Serviço</span><span class="value" id="detailService">—</span></div>
+        <div class="summary-row"><span class="label">Profissional</span><span class="value" id="detailProf">—</span></div>
+        <div class="summary-row"><span class="label">Data</span><span class="value" id="detailDate">—</span></div>
+        <div class="summary-row"><span class="label">Horário</span><span class="value" id="detailTime">—</span></div>
+        <div class="summary-row"><span class="label">Valor</span><span class="value text-brand" id="detailPrice">—</span></div>
+        <div class="summary-row"><span class="label">Status</span><span id="detailStatus">—</span></div>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-success flex-1" type="button" onclick="updateAppointmentStatus('confirmado')">Confirmar</button>
+        <button class="btn btn-danger flex-1" type="button" onclick="updateAppointmentStatus('cancelado')">Cancelar</button>
+      </div>
+      <button class="btn btn-ghost mt-2" type="button" onclick="closeModal('modalApptDetail')">Fechar</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalWAMsg">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="font-bold text-lg mb-3">Mensagem de confirmação</div>
+      <div style="background:#E2FFC7;border-radius:12px;padding:16px;font-size:14px;line-height:1.6;color:#1a1a1a;margin-bottom:16px;" id="waMessageText"></div>
+      <button class="btn btn-wa" type="button" onclick="copyWAMsg()">Copiar mensagem</button>
+      <button class="btn btn-ghost mt-2" type="button" onclick="closeModal('modalWAMsg')">Fechar</button>
+    </div>
+  </div>
+
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
