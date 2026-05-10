@@ -120,7 +120,10 @@
           <div style="font-size:13px;color:var(--sub);">Olá, 👋</div>
           <h2 id="greetingName">Bem-vindo</h2>
         </div>
-        <div class="avatar" id="avatarInitial" style="background:var(--brand);color:#fff;">A</div>
+        <div class="flex items-center gap-2">
+          <button class="btn btn-link btn-sm" type="button" onclick="logout()">Sair</button>
+          <div class="avatar" id="avatarInitial" style="background:var(--brand);color:#fff;">A</div>
+        </div>
       </div>
       <div class="scroll-area p-4">
         <div class="section-title">Hoje · <span id="todayDate"></span></div>
@@ -138,7 +141,7 @@
     <div id="pageAgendamentos" class="page">
       <div class="top-bar">
         <h2>Agendamentos</h2>
-        <button class="btn btn-sm btn-brand" style="width:auto" type="button" onclick="openModal('modalNovoAppt')">+ Novo</button>
+        <button class="btn btn-sm btn-brand" style="width:auto" type="button" onclick="openAppointmentModal()">+ Novo</button>
       </div>
       <div class="scroll-area p-4">
         <div class="flex gap-2 mb-3">
@@ -169,7 +172,7 @@
     <div id="pageMeuNegocio" class="page">
       <div class="top-bar"><h2>Meu Negócio</h2></div>
       <div class="scroll-area p-4">
-        <div class="biz-cover"><div class="biz-avatar" id="bizAvatarPreview">✂️</div></div>
+        <div class="biz-cover" id="bizCoverPreview"><div class="biz-avatar" id="bizAvatarPreview">✂️</div></div>
         <div class="section-title" style="margin-top:8px;">Informações</div>
         <div class="card">
           <div class="input-group"><label for="businessName">Nome do Negócio</label><input type="text" id="businessName" /></div>
@@ -186,6 +189,8 @@
           <div class="input-group"><label for="businessWhatsapp">WhatsApp</label><input type="tel" id="businessWhatsapp" inputmode="numeric" maxlength="15" data-br-phone="true" placeholder="(11) 99999-0000" /></div>
           <div class="input-group"><label for="businessInstagram">Instagram</label><input type="text" id="businessInstagram" /></div>
           <div class="input-group"><label for="businessAddress">Endereço</label><input type="text" id="businessAddress" /></div>
+          <div class="input-group"><label for="businessLogoFile">Logo do salão</label><input type="file" id="businessLogoFile" accept="image/*" onchange="handleBusinessLogoUpload(event)" /></div>
+          <div class="input-group"><label for="businessCoverFile">Foto de capa</label><input type="file" id="businessCoverFile" accept="image/*" onchange="handleBusinessCoverUpload(event)" /></div>
           <div class="input-group"><label for="businessLogoEmoji">Emoji/Logo</label><input type="text" id="businessLogoEmoji" maxlength="4" /></div>
         </div>
         <div class="section-title">Horários de Funcionamento</div>
@@ -193,6 +198,7 @@
           <div id="horariosList"></div>
         </div>
         <button class="btn btn-brand" type="button" onclick="saveBusinessProfile()">Salvar Alterações</button>
+        <button class="btn btn-link mt-2" type="button" onclick="clearSeedData()">Limpar dados iniciais</button>
         <button class="btn btn-ghost mt-2" type="button" onclick="logout()">Sair</button>
       </div>
     </div>
@@ -384,15 +390,15 @@
   <div class="modal-overlay" id="modalNovoAppt">
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <div class="font-bold text-lg mb-4">Novo Agendamento</div>
+      <div class="font-bold text-lg mb-4" id="apptModalTitle">Novo Agendamento</div>
       <div class="input-group"><label for="newApptClient">Cliente</label><input type="text" id="newApptClient" placeholder="Nome do cliente" /></div>
       <div class="input-group"><label for="newApptPhone">Telefone/WhatsApp</label><input type="tel" id="newApptPhone" placeholder="(11) 99999-0000" inputmode="numeric" maxlength="15" data-br-phone="true" /></div>
       <div class="input-group"><label for="newApptService">Serviço</label><select id="newApptService"></select></div>
       <div class="input-group"><label for="newApptProfessional">Profissional</label><select id="newApptProfessional"></select></div>
       <div class="input-group"><label for="newApptDate">Data</label><input type="date" id="newApptDate" /></div>
       <div class="input-group"><label for="newApptTime">Horário</label><input type="time" id="newApptTime" /></div>
-      <button class="btn btn-brand mt-2" type="button" onclick="saveAppointment()">Salvar Agendamento</button>
-      <button class="btn btn-ghost mt-2" type="button" onclick="closeModal('modalNovoAppt')">Cancelar</button>
+      <button class="btn btn-brand mt-2" id="apptModalSaveBtn" type="button" onclick="saveAppointment()">Salvar Agendamento</button>
+      <button class="btn btn-ghost mt-2" type="button" onclick="closeAppointmentModal()">Cancelar</button>
     </div>
   </div>
 
@@ -448,9 +454,11 @@
         <div class="summary-row"><span class="label">Status</span><span id="detailStatus">—</span></div>
       </div>
       <div class="flex gap-2">
+        <button class="btn btn-link flex-1" type="button" onclick="editAppointmentFromDetail()">Editar</button>
         <button class="btn btn-success flex-1" type="button" onclick="updateAppointmentStatus('confirmado')">Confirmar</button>
         <button class="btn btn-danger flex-1" type="button" onclick="updateAppointmentStatus('cancelado')">Cancelar</button>
       </div>
+      <button class="btn btn-danger mt-2" type="button" onclick="deleteAppointment()">Excluir Agendamento</button>
       <button class="btn btn-ghost mt-2" type="button" onclick="closeModal('modalApptDetail')">Fechar</button>
     </div>
   </div>

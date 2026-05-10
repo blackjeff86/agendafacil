@@ -18,9 +18,14 @@ create table if not exists public.businesses (
   instagram   text,
   address     text,
   logo_emoji  text default '✂️',
+  logo_image_url text,
+  cover_image_url text,
   active      boolean default true,
   created_at  timestamptz default now()
 );
+
+alter table public.businesses add column if not exists logo_image_url text;
+alter table public.businesses add column if not exists cover_image_url text;
 
 -- ── SERVICES ────────────────────────────────────────────────
 create table if not exists public.services (

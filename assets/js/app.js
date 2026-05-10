@@ -112,6 +112,8 @@ const FALLBACK_PUBLIC = {
     instagram: "@agendafacil.demo",
     address: "Rua das Flores, 123 - Centro",
     logo_emoji: "✂️",
+    logo_image_url: "",
+    cover_image_url: "",
   },
   services: DEFAULT_SERVICES.map((item, index) => ({ ...item, id: `demo-service-${index + 1}` })),
   professionals: DEFAULT_PROFESSIONALS.map((item, index) => ({
@@ -132,6 +134,7 @@ const state = {
   hours: [],
   currentFilter: "todos",
   selectedAppointment: null,
+  editingAppointmentId: null,
   editingServiceId: null,
   editingProfessionalId: null,
   publicData: {
@@ -171,6 +174,10 @@ function exposeActionsToWindow() {
     openApptDetail,
     updateAppointmentStatus,
     saveAppointment,
+    openAppointmentModal,
+    closeAppointmentModal,
+    editAppointmentFromDetail,
+    deleteAppointment,
     saveService,
     saveProfessional,
     openServiceModal,
@@ -197,6 +204,9 @@ function exposeActionsToWindow() {
     openBusinessWhatsApp,
     openBusinessInstagram,
     openHostedPublicPage,
+    clearSeedData,
+    handleBusinessLogoUpload,
+    handleBusinessCoverUpload,
     openModal,
     closeModal,
     toggleHourInputs,
@@ -406,7 +416,7 @@ function renderBusinessProfile() {
   document.getElementById("businessInstagram").value = business.instagram || "";
   document.getElementById("businessAddress").value = business.address || "";
   document.getElementById("businessLogoEmoji").value = business.logo_emoji || "✂️";
-  document.getElementById("bizAvatarPreview").textContent = business.logo_emoji || "✂️";
+  applyBusinessPreview(business);
 }
 
 function renderDashboard() {
@@ -607,6 +617,32 @@ function openApptDetail(id) {
   openModal("modalApptDetail");
 }
 
+function openAppointmentModal() {
+  resetAppointmentModal();
+  openModal("modalNovoAppt");
+}
+
+function closeAppointmentModal() {
+  closeModal("modalNovoAppt");
+  resetAppointmentModal();
+}
+
+function editAppointmentFromDetail() {
+  if (!state.selectedAppointment) return;
+  const appointment = state.selectedAppointment;
+  state.editingAppointmentId = appointment.id;
+  document.getElementById("apptModalTitle").textContent = "Editar Agendamento";
+  document.getElementById("apptModalSaveBtn").textContent = "Salvar Alterações";
+  document.getElementById("newApptClient").value = appointment.client_name || "";
+  document.getElementById("newApptPhone").value = appointment.client_phone || "";
+  document.getElementById("newApptService").value = appointment.service_id || "";
+  document.getElementById("newApptProfessional").value = appointment.professional_id || "";
+  document.getElementById("newApptDate").value = appointment.appointment_date || "";
+  document.getElementById("newApptTime").value = formatTime(appointment.appointment_time);
+  closeModal("modalApptDetail");
+  openModal("modalNovoAppt");
+}
+
 async function updateAppointmentStatus(status) {
   if (!state.selectedAppointment) return;
   showLoading(true);
@@ -742,6 +778,8 @@ async function createBusinessWithSeed(draft) {
     instagram: draft.instagram || "",
     address: draft.address || "",
     logo_emoji: draft.logo_emoji || "✂️",
+    logo_image_url: draft.logo_image_url || "",
+    cover_image_url: draft.cover_image_url || "",
     active: true,
   };
 
@@ -803,6 +841,8 @@ async function saveBusinessProfile() {
     instagram: document.getElementById("businessInstagram").value.trim(),
     address: document.getElementById("businessAddress").value.trim(),
     logo_emoji: document.getElementById("businessLogoEmoji").value.trim() || "✂️",
+    logo_image_url: state.business.logo_image_url || "",
+    cover_image_url: state.business.cover_image_url || "",
   };
 
   if (!payload.name || !payload.slug) {
@@ -937,6 +977,7 @@ async function saveProfessional() {
 async function saveAppointment() {
   if (!state.business) return;
   const client = getSupabaseClient();
+  const isEditing = Boolean(state.editingAppointmentId);
 
   const payload = {
     business_id: state.business.id,
@@ -946,7 +987,7 @@ async function saveAppointment() {
     professional_id: document.getElementById("newApptProfessional").value || null,
     appointment_date: document.getElementById("newApptDate").value,
     appointment_time: document.getElementById("newApptTime").value,
-    status: "confirmado",
+    status: isEditing ? state.selectedAppointment?.status || "confirmado" : "confirmado",
   };
 
   if (!payload.client_name || !payload.client_phone || !payload.service_id || !payload.appointment_date || !payload.appointment_time) {
@@ -956,11 +997,13 @@ async function saveAppointment() {
 
   showLoading(true);
   try {
-    const { error } = await client.from("appointments").insert(payload);
+    const { error } = isEditing
+      ? await client.from("appointments").update(payload).eq("id", state.editingAppointmentId)
+      : await client.from("appointments").insert(payload);
     if (error) throw error;
-    closeModal("modalNovoAppt");
+    closeAppointmentModal();
     resetAppointmentModal();
-    showToast("Agendamento criado com sucesso.");
+    showToast(isEditing ? "Agendamento atualizado com sucesso." : "Agendamento criado com sucesso.");
     await refreshAllBusinessData();
   } catch (error) {
     console.error(error);
@@ -1087,7 +1130,12 @@ function renderPublicLanding() {
   const { business, services, professionals, hours } = state.publicData;
   if (!business) return;
 
-  document.getElementById("publicHeroEmoji").textContent = business.logo_emoji || "✂️";
+  const hero = document.getElementById("publicHeroEmoji");
+  if (business.logo_image_url) {
+    hero.innerHTML = `<img src="${business.logo_image_url}" alt="Logo do negocio" style="width:100%;height:100%;object-fit:cover;border-radius:20px;" />`;
+  } else {
+    hero.textContent = business.logo_emoji || "✂️";
+  }
   document.getElementById("publicHeroName").textContent = business.name;
   document.getElementById("publicHeroDescription").textContent = business.description || "Agende seu horario online.";
   document.getElementById("publicHeroAddress").textContent = `📍 ${business.address || "Endereco nao informado"}`;
@@ -1095,6 +1143,13 @@ function renderPublicLanding() {
   document.getElementById("publicHeroHours").textContent = `🕐 ${formatHoursSummary(hours)}`;
   document.getElementById("publicAddressCard").textContent = business.address || "Endereco nao informado";
   document.getElementById("publicInstagramCard").textContent = business.instagram || "@sem-instagram";
+  if (business.cover_image_url) {
+    document.querySelector(".pub-hero").style.backgroundImage = `linear-gradient(160deg, rgba(124,58,237,.8) 0%, rgba(91,33,182,.8) 100%), url(${business.cover_image_url})`;
+    document.querySelector(".pub-hero").style.backgroundSize = "cover";
+    document.querySelector(".pub-hero").style.backgroundPosition = "center";
+  } else {
+    document.querySelector(".pub-hero").style.backgroundImage = "";
+  }
 
   document.getElementById("pubServicePreview").innerHTML = services.length
     ? services
@@ -1487,6 +1542,63 @@ function openHostedPublicPage() {
   window.open(getPublicAppUrl(state.business.slug), "_blank");
 }
 
+async function clearSeedData() {
+  if (!state.business) return;
+  if (!window.confirm("Isso vai apagar servicos, equipe e agendamentos atuais. Deseja continuar?")) {
+    return;
+  }
+
+  showLoading(true);
+  try {
+    const client = getSupabaseClient();
+    const { error: appointmentError } = await client.from("appointments").delete().eq("business_id", state.business.id);
+    if (appointmentError) throw appointmentError;
+
+    const professionalIds = state.professionals.map((item) => item.id);
+    if (professionalIds.length) {
+      const { error: pivotError } = await client.from("professional_services").delete().in("professional_id", professionalIds);
+      if (pivotError) throw pivotError;
+    }
+
+    const { error: professionalsError } = await client.from("professionals").delete().eq("business_id", state.business.id);
+    if (professionalsError) throw professionalsError;
+
+    const { error: servicesError } = await client.from("services").delete().eq("business_id", state.business.id);
+    if (servicesError) throw servicesError;
+
+    showToast("Dados iniciais removidos. Agora voce pode cadastrar tudo do zero.");
+    await refreshAllBusinessData();
+  } catch (error) {
+    console.error(error);
+    showToast(getErrorMessage(error));
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function deleteAppointment() {
+  if (!state.selectedAppointment) return;
+  if (!window.confirm(`Excluir o agendamento de "${state.selectedAppointment.client_name}"?`)) {
+    return;
+  }
+
+  showLoading(true);
+  try {
+    const client = getSupabaseClient();
+    const { error } = await client.from("appointments").delete().eq("id", state.selectedAppointment.id);
+    if (error) throw error;
+    closeModal("modalApptDetail");
+    state.selectedAppointment = null;
+    showToast("Agendamento excluido com sucesso.");
+    await refreshAllBusinessData();
+  } catch (error) {
+    console.error(error);
+    showToast(getErrorMessage(error));
+  } finally {
+    showLoading(false);
+  }
+}
+
 function openBusinessWhatsApp() {
   const phone = onlyDigits(state.publicData.business?.whatsapp || "");
   if (!phone) {
@@ -1567,6 +1679,34 @@ function getPendingSetupFromMetadata() {
   };
 }
 
+async function handleBusinessLogoUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  try {
+    const dataUrl = await readFileAsDataUrl(file);
+    state.business = { ...(state.business || {}), logo_image_url: dataUrl };
+    applyBusinessPreview(state.business);
+    showToast("Logo carregada. Clique em salvar para gravar.");
+  } catch (error) {
+    console.error(error);
+    showToast("Nao foi possivel carregar a logo.");
+  }
+}
+
+async function handleBusinessCoverUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  try {
+    const dataUrl = await readFileAsDataUrl(file);
+    state.business = { ...(state.business || {}), cover_image_url: dataUrl };
+    applyBusinessPreview(state.business);
+    showToast("Foto de capa carregada. Clique em salvar para gravar.");
+  } catch (error) {
+    console.error(error);
+    showToast("Nao foi possivel carregar a capa.");
+  }
+}
+
 function slugify(value) {
   return value
     .normalize("NFD")
@@ -1631,6 +1771,28 @@ function formatHoursSummary(hours) {
   return `${formatTime(first.open_time)}-${formatTime(last.close_time)}`;
 }
 
+function applyBusinessPreview(business) {
+  const avatar = document.getElementById("bizAvatarPreview");
+  const cover = document.getElementById("bizCoverPreview");
+  const logoImage = business?.logo_image_url || "";
+  const coverImage = business?.cover_image_url || "";
+  const emoji = business?.logo_emoji || "✂️";
+
+  if (avatar) {
+    avatar.style.backgroundImage = logoImage ? `url(${logoImage})` : "";
+    avatar.style.backgroundSize = "cover";
+    avatar.style.backgroundPosition = "center";
+    avatar.style.color = logoImage ? "transparent" : "var(--brand)";
+    avatar.textContent = logoImage ? "" : emoji;
+  }
+
+  if (cover) {
+    cover.style.backgroundImage = coverImage ? `linear-gradient(rgba(30,27,75,.15), rgba(30,27,75,.15)), url(${coverImage})` : "";
+    cover.style.backgroundSize = "cover";
+    cover.style.backgroundPosition = "center";
+  }
+}
+
 function generateTimeSlotsForDate(date, hours) {
   const day = new Date(`${date}T12:00:00`).getDay();
   const rule = (hours || []).find((item) => Number(item.day_of_week) === day && item.active);
@@ -1678,6 +1840,15 @@ function formatBrazilPhone(value) {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 }
 
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 function renderEmptyState(message) {
   return `<div class="empty-state">${message}</div>`;
 }
@@ -1713,8 +1884,13 @@ function resetProfessionalModal() {
 }
 
 function resetAppointmentModal() {
+  state.editingAppointmentId = null;
+  document.getElementById("apptModalTitle").textContent = "Novo Agendamento";
+  document.getElementById("apptModalSaveBtn").textContent = "Salvar Agendamento";
   document.getElementById("newApptClient").value = "";
   document.getElementById("newApptPhone").value = "";
+  document.getElementById("newApptService").value = "";
+  document.getElementById("newApptProfessional").value = "";
   document.getElementById("newApptDate").value = "";
   document.getElementById("newApptTime").value = "";
 }
