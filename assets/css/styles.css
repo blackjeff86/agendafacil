@@ -227,6 +227,8 @@
   .landing-section-heading{max-width:620px;margin-bottom:16px;}
   .landing-section-kicker{display:inline-flex;padding:6px 10px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px;}
   .landing-section h2,.landing-section-heading h2{font-size:24px;line-height:1.14;color:#0f172a;margin-bottom:0;max-width:320px;letter-spacing:-.02em;}
+  .landing-section-dark .landing-section-kicker{background:rgba(219,234,254,.96);color:#1d4ed8;}
+  .landing-section-dark h2,.landing-section-dark .landing-section-heading h2{color:#eef4ff;}
   .landing-grid{display:grid;grid-template-columns:1fr;gap:12px;}
   .landing-card{background:#fff;border-radius:20px;padding:18px;box-shadow:0 14px 30px rgba(15,23,42,.07);border:1px solid #e9effa;}
   .landing-card h3{font-size:16px;margin-bottom:6px;color:#0f172a;line-height:1.24;}
@@ -381,6 +383,7 @@
     .landing-section{margin:44px auto 0;}
     .landing-section-heading{margin-bottom:20px;}
     .landing-section h2,.landing-section-heading h2{font-size:34px;max-width:760px;}
+    .landing-section-dark h2,.landing-section-dark .landing-section-heading h2{color:#f8fbff;}
     .landing-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
     .landing-card{padding:22px;border-radius:24px;}
     .landing-card h3{font-size:18px;}
