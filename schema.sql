@@ -21,7 +21,7 @@ create table if not exists public.businesses (
   logo_emoji  text default '✂️',
   logo_image_url text,
   cover_image_url text,
-  plan_name   text default 'Plano Mensal 29,90',
+  plan_name   text default 'Plano Mensal 49,90',
   billing_status text default 'active',
   support_notes text,
   blocked_reason text,
@@ -32,7 +32,7 @@ create table if not exists public.businesses (
 alter table public.businesses add column if not exists owner_email text;
 alter table public.businesses add column if not exists logo_image_url text;
 alter table public.businesses add column if not exists cover_image_url text;
-alter table public.businesses add column if not exists plan_name text default 'Plano Mensal 29,90';
+alter table public.businesses add column if not exists plan_name text default 'Plano Mensal 49,90';
 alter table public.businesses add column if not exists billing_status text default 'active';
 alter table public.businesses add column if not exists support_notes text;
 alter table public.businesses add column if not exists blocked_reason text;
@@ -343,6 +343,7 @@ $$;
 
 grant execute on function public.assign_available_professional(uuid, uuid, date, time) to anon, authenticated;
 
+drop trigger if exists trg_validate_appointment_integrity on public.appointments;
 drop function if exists public.validate_appointment_integrity();
 create or replace function public.validate_appointment_integrity()
 returns trigger
@@ -475,7 +476,6 @@ begin
 end;
 $$;
 
-drop trigger if exists trg_validate_appointment_integrity on public.appointments;
 create trigger trg_validate_appointment_integrity
 before insert or update on public.appointments
 for each row

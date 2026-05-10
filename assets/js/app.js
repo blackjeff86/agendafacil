@@ -713,7 +713,7 @@ function renderSupportBusinesses() {
                 </div>
                 <span class="badge ${business.active ? "badge-success" : "badge-danger"}">${business.active ? "Ativa" : "Bloqueada"}</span>
               </div>
-              <div class="text-sm text-sub mt-2">Plano: ${business.plan_name || "Plano Mensal 29,90"} · Cobrança: ${business.billing_status || "active"}</div>
+              <div class="text-sm text-sub mt-2">Plano: ${business.plan_name || "Plano Mensal 49,90"} · Cobrança: ${business.billing_status || "active"}</div>
               <div class="card-actions" style="margin-top:12px;">
                 <button class="btn btn-link btn-sm" type="button" onclick="openSupportBusinessModal('${business.id}')">Gerenciar</button>
                 <button class="btn ${business.active ? "btn-warning" : "btn-success"} btn-sm" type="button" onclick="toggleBusinessBlocked('${business.id}')">${business.active ? "Bloquear" : "Desbloquear"}</button>
@@ -733,7 +733,7 @@ function openSupportBusinessModal(businessId) {
   document.getElementById("supportBusinessName").value = business.name || "";
   document.getElementById("supportBusinessOwnerEmail").value = business.owner_email || "";
   document.getElementById("supportBusinessWhatsapp").value = business.whatsapp || "";
-  document.getElementById("supportBusinessPlan").value = business.plan_name || "Plano Mensal 29,90";
+  document.getElementById("supportBusinessPlan").value = business.plan_name || "Plano Mensal 49,90";
   document.getElementById("supportBusinessBilling").value = business.billing_status || "active";
   document.getElementById("supportBusinessBlockedReason").value = business.blocked_reason || "";
   document.getElementById("supportBusinessNotes").value = business.support_notes || "";
@@ -748,7 +748,7 @@ async function saveSupportBusiness() {
     name: document.getElementById("supportBusinessName").value.trim(),
     owner_email: document.getElementById("supportBusinessOwnerEmail").value.trim(),
     whatsapp: document.getElementById("supportBusinessWhatsapp").value.trim(),
-    plan_name: document.getElementById("supportBusinessPlan").value.trim() || "Plano Mensal 29,90",
+    plan_name: document.getElementById("supportBusinessPlan").value.trim() || "Plano Mensal 49,90",
     billing_status: billingStatus,
     blocked_reason: document.getElementById("supportBusinessBlockedReason").value.trim(),
     support_notes: document.getElementById("supportBusinessNotes").value.trim(),
@@ -1045,7 +1045,7 @@ async function createBusinessWithSeed(draft) {
     logo_emoji: draft.logo_emoji || "✂️",
     logo_image_url: draft.logo_image_url || "",
     cover_image_url: draft.cover_image_url || "",
-    plan_name: draft.plan_name || "Plano Mensal 29,90",
+    plan_name: draft.plan_name || "Plano Mensal 49,90",
     billing_status: draft.billing_status || "active",
     active: true,
   };
