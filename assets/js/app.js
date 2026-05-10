@@ -137,6 +137,7 @@ const state = {
   editingAppointmentId: null,
   editingServiceId: null,
   editingProfessionalId: null,
+  pendingConfirmAction: null,
   publicData: {
     business: null,
     services: [],
@@ -178,16 +179,17 @@ function exposeActionsToWindow() {
     closeAppointmentModal,
     editAppointmentFromDetail,
     deleteAppointment,
+    confirmDeleteAppointment,
     saveService,
     saveProfessional,
     openServiceModal,
     closeServiceModal,
     editService,
-    deleteService,
+    toggleServiceActive,
     openProfessionalModal,
     closeProfessionalModal,
     editProfessional,
-    deleteProfessional,
+    toggleProfessionalActive,
     pubBack,
     startBooking,
     goNextFromService,
@@ -207,6 +209,7 @@ function exposeActionsToWindow() {
     handleBusinessLogoUpload,
     handleBusinessCoverUpload,
     toggleCardMenu,
+    closeConfirmActionModal,
     openModal,
     closeModal,
     toggleHourInputs,
@@ -242,6 +245,9 @@ function setupStaticBehavior() {
   document.getElementById("tabLogin").addEventListener("click", () => switchAuthMode("login"));
   document.getElementById("tabSignup").addEventListener("click", () => switchAuthMode("signup"));
   document.getElementById("btnPublicPreview").addEventListener("click", () => showPublicBooking());
+  document.getElementById("confirmActionButton").addEventListener("click", () => {
+    runPendingConfirmAction();
+  });
   setupPhoneMasks();
 
   document.querySelectorAll(".modal-overlay").forEach((modal) => {
@@ -505,7 +511,7 @@ function renderServicos() {
                       <button class="card-menu-btn" type="button" onclick="toggleCardMenu('service-menu-${service.id}')">⋯</button>
                       <div class="card-menu-sheet">
                         <button class="card-menu-item" type="button" onclick="editService('${service.id}')">Editar</button>
-                        <button class="card-menu-item danger" type="button" onclick="deleteService('${service.id}')">Excluir</button>
+                        <button class="card-menu-item warning" type="button" onclick="toggleServiceActive('${service.id}')">${service.active ? "Desativar" : "Reativar"}</button>
                       </div>
                     </div>
                   </div>
@@ -544,7 +550,7 @@ function renderProfissionais() {
                       <button class="card-menu-btn" type="button" onclick="toggleCardMenu('professional-menu-${professional.id}')">⋯</button>
                       <div class="card-menu-sheet">
                         <button class="card-menu-item" type="button" onclick="editProfessional('${professional.id}')">Editar</button>
-                        <button class="card-menu-item danger" type="button" onclick="deleteProfessional('${professional.id}')">Excluir</button>
+                        <button class="card-menu-item warning" type="button" onclick="toggleProfessionalActive('${professional.id}')">${professional.active ? "Desativar" : "Reativar"}</button>
                       </div>
                     </div>
                   </div>
@@ -1563,10 +1569,6 @@ function openHostedPublicPage() {
 
 async function deleteAppointment() {
   if (!state.selectedAppointment) return;
-  if (!window.confirm(`Excluir o agendamento de "${state.selectedAppointment.client_name}"?`)) {
-    return;
-  }
-
   showLoading(true);
   try {
     const client = getSupabaseClient();
@@ -1582,6 +1584,17 @@ async function deleteAppointment() {
   } finally {
     showLoading(false);
   }
+}
+
+function confirmDeleteAppointment() {
+  if (!state.selectedAppointment) return;
+  openConfirmActionModal({
+    title: "Excluir agendamento",
+    message: `Deseja excluir o agendamento de "${state.selectedAppointment.client_name}"? Essa ação não poderá ser desfeita.`,
+    confirmLabel: "Excluir agendamento",
+    confirmClass: "btn btn-danger",
+    onConfirm: deleteAppointment,
+  });
 }
 
 function openBusinessWhatsApp() {
@@ -1608,6 +1621,9 @@ function openModal(id) {
 
 function closeModal(id) {
   document.getElementById(id).classList.remove("open");
+  if (id === "modalConfirmAction") {
+    state.pendingConfirmAction = null;
+  }
 }
 
 function showScreen(id) {
@@ -1916,23 +1932,16 @@ function editService(serviceId) {
   openModal("modalNovoServico");
 }
 
-async function deleteService(serviceId) {
+async function toggleServiceActive(serviceId) {
   const service = state.services.find((item) => item.id === serviceId);
   if (!service) return;
-  if (!window.confirm(`Excluir o serviço "${service.name}"?`)) {
-    return;
-  }
-  if (state.appointments.some((item) => item.service_id === serviceId)) {
-    showToast("Esse servico ja possui agendamentos e nao pode ser excluido.");
-    return;
-  }
 
   showLoading(true);
   try {
     const client = getSupabaseClient();
-    const { error } = await client.from("services").delete().eq("id", serviceId);
+    const { error } = await client.from("services").update({ active: !service.active }).eq("id", serviceId);
     if (error) throw error;
-    showToast("Servico excluido com sucesso.");
+    showToast(service.active ? "Servico desativado com sucesso." : "Servico reativado com sucesso.");
     await refreshAllBusinessData();
   } catch (error) {
     console.error(error);
@@ -1971,29 +1980,45 @@ function editProfessional(professionalId) {
   openModal("modalNovoProf");
 }
 
-async function deleteProfessional(professionalId) {
+async function toggleProfessionalActive(professionalId) {
   const professional = state.professionals.find((item) => item.id === professionalId);
   if (!professional) return;
-  if (!window.confirm(`Excluir o profissional "${professional.name}"?`)) {
-    return;
-  }
-  if (state.appointments.some((item) => item.professional_id === professionalId)) {
-    showToast("Esse profissional ja possui agendamentos e nao pode ser excluido.");
-    return;
-  }
 
   showLoading(true);
   try {
     const client = getSupabaseClient();
-    const { error } = await client.from("professionals").delete().eq("id", professionalId);
+    const { error } = await client.from("professionals").update({ active: !professional.active }).eq("id", professionalId);
     if (error) throw error;
-    showToast("Profissional excluido com sucesso.");
+    showToast(professional.active ? "Profissional desativado com sucesso." : "Profissional reativado com sucesso.");
     await refreshAllBusinessData();
   } catch (error) {
     console.error(error);
     showToast(getErrorMessage(error));
   } finally {
     showLoading(false);
+  }
+}
+
+function openConfirmActionModal({ title, message, confirmLabel, confirmClass, onConfirm }) {
+  state.pendingConfirmAction = onConfirm;
+  document.getElementById("confirmActionTitle").textContent = title;
+  document.getElementById("confirmActionMessage").textContent = message;
+  const button = document.getElementById("confirmActionButton");
+  button.textContent = confirmLabel || "Confirmar";
+  button.className = confirmClass || "btn btn-danger";
+  openModal("modalConfirmAction");
+}
+
+function closeConfirmActionModal() {
+  state.pendingConfirmAction = null;
+  closeModal("modalConfirmAction");
+}
+
+async function runPendingConfirmAction() {
+  const action = state.pendingConfirmAction;
+  closeConfirmActionModal();
+  if (typeof action === "function") {
+    await action();
   }
 }
 

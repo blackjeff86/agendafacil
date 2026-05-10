@@ -457,8 +457,18 @@
         <button class="btn btn-success flex-1" type="button" onclick="updateAppointmentStatus('confirmado')">Confirmar</button>
         <button class="btn btn-danger flex-1" type="button" onclick="updateAppointmentStatus('cancelado')">Cancelar</button>
       </div>
-      <button class="btn btn-danger mt-2" type="button" onclick="deleteAppointment()">Excluir Agendamento</button>
+      <button class="btn btn-danger mt-2" type="button" onclick="confirmDeleteAppointment()">Excluir Agendamento</button>
       <button class="btn btn-ghost mt-2" type="button" onclick="closeModal('modalApptDetail')">Fechar</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalConfirmAction">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="font-bold text-lg mb-2" id="confirmActionTitle">Confirmar ação</div>
+      <div class="text-sm text-sub mb-4" id="confirmActionMessage">Tem certeza que deseja continuar?</div>
+      <button class="btn btn-danger" id="confirmActionButton" type="button">Confirmar</button>
+      <button class="btn btn-ghost mt-2" type="button" onclick="closeConfirmActionModal()">Cancelar</button>
     </div>
   </div>
 
