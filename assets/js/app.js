@@ -143,6 +143,7 @@ const state = {
   supportBusinesses: [],
   supportSelectedBusinessId: null,
   supportContextBusinessId: null,
+  supportFilter: "todos",
   publicData: {
     business: null,
     services: [],
@@ -223,6 +224,8 @@ function exposeActionsToWindow() {
     toggleBusinessBlocked,
     supportCreateService,
     supportCreateProfessional,
+    setSupportFilter,
+    openSupportPublicLink,
     openModal,
     closeModal,
     toggleHourInputs,
@@ -696,25 +699,60 @@ function renderSupportBusinesses() {
   const search = document.getElementById("supportSearch")?.value?.trim().toLowerCase() || "";
   const filtered = state.supportBusinesses.filter((business) => {
     const haystack = [business.name, business.slug, business.owner_email, business.whatsapp].join(" ").toLowerCase();
-    return haystack.includes(search);
+    const matchesSearch = haystack.includes(search);
+    const matchesFilter =
+      state.supportFilter === "todos" ||
+      (state.supportFilter === "ativas" && business.active) ||
+      (state.supportFilter === "bloqueadas" && !business.active) ||
+      (state.supportFilter === "sem_email" && !business.owner_email);
+    return matchesSearch && matchesFilter;
   });
 
   document.getElementById("supportTotalBusinesses").textContent = String(state.supportBusinesses.length);
+  document.getElementById("supportActiveBusinesses").textContent = String(state.supportBusinesses.filter((item) => item.active).length);
   document.getElementById("supportBlockedBusinesses").textContent = String(state.supportBusinesses.filter((item) => !item.active).length);
+  document.getElementById("supportNoEmailBusinesses").textContent = String(state.supportBusinesses.filter((item) => !item.owner_email).length);
+  document.getElementById("supportEstimatedMrr").textContent = formatCurrency(state.supportBusinesses.reduce((sum, item) => sum + getBusinessPlanValue(item.plan_name), 0));
+  document.getElementById("supportResultsLabel").textContent = `${filtered.length} resultado(s) encontrado(s)`;
   document.getElementById("supportBusinessList").innerHTML = filtered.length
     ? filtered
         .map(
           (business) => `
-            <div class="card ${business.active ? "" : "soft-inactive"}">
-              <div class="flex justify-between items-center gap-2">
+            <div class="support-business-card ${business.active ? "" : "soft-inactive"}">
+              <div class="support-business-top">
                 <div>
-                  <div class="font-bold">${business.name}</div>
-                  <div class="text-sm text-sub">${business.owner_email || "Sem e-mail"} · /?slug=${business.slug}</div>
+                  <div class="font-bold support-business-name">${business.name}</div>
+                  <div class="support-business-meta">${business.category || "Salão"} · desde ${formatMonthYear(business.created_at)}</div>
                 </div>
                 <span class="badge ${business.active ? "badge-success" : "badge-danger"}">${business.active ? "Ativa" : "Bloqueada"}</span>
               </div>
-              <div class="text-sm text-sub mt-2">Plano: ${business.plan_name || "Plano Mensal 49,90"} · Cobrança: ${business.billing_status || "active"}</div>
-              <div class="card-actions" style="margin-top:12px;">
+
+              <div class="support-business-grid">
+                <div class="support-business-info">
+                  <span class="support-business-label">Contato</span>
+                  <strong>${business.owner_email || "Sem e-mail cadastrado"}</strong>
+                </div>
+                <div class="support-business-info">
+                  <span class="support-business-label">WhatsApp</span>
+                  <strong>${business.whatsapp || "Não informado"}</strong>
+                </div>
+                <div class="support-business-info">
+                  <span class="support-business-label">Link público</span>
+                  <strong>/${"?slug="}${business.slug}</strong>
+                </div>
+                <div class="support-business-info">
+                  <span class="support-business-label">Cobrança</span>
+                  <strong>${formatBillingLabel(business.billing_status)}</strong>
+                </div>
+              </div>
+
+              <div class="support-business-plan-row">
+                <span class="chip">${business.plan_name || "Plano Mensal 49,90"}</span>
+                ${business.support_notes ? `<span class="support-note-preview">${escapeHtml(business.support_notes)}</span>` : `<span class="support-note-preview empty">Sem notas de suporte</span>`}
+              </div>
+
+              <div class="card-actions" style="margin-top:14px;">
+                <button class="btn btn-ghost btn-sm" type="button" onclick="openSupportPublicLink('${business.slug}')">Abrir link</button>
                 <button class="btn btn-link btn-sm" type="button" onclick="openSupportBusinessModal('${business.id}')">Gerenciar</button>
                 <button class="btn ${business.active ? "btn-warning" : "btn-success"} btn-sm" type="button" onclick="toggleBusinessBlocked('${business.id}')">${business.active ? "Bloquear" : "Desbloquear"}</button>
                 <button class="btn btn-ghost btn-sm" type="button" onclick="sendSupportPasswordReset('${business.id}')">Reset senha</button>
@@ -723,6 +761,24 @@ function renderSupportBusinesses() {
         )
         .join("")
     : renderEmptyState("Nenhuma loja encontrada.");
+}
+
+function setSupportFilter(filter, event) {
+  state.supportFilter = filter;
+  document.querySelectorAll(".support-filter-btn").forEach((button) => {
+    const active = button.dataset.filter === filter;
+    button.classList.toggle("is-active", active);
+    button.classList.toggle("btn-brand", active);
+    button.classList.toggle("btn-link", !active);
+  });
+  if (event?.target) {
+    event.target.blur();
+  }
+  renderSupportBusinesses();
+}
+
+function openSupportPublicLink(slug) {
+  window.open(getPublicAppUrl(slug), "_blank");
 }
 
 function openSupportBusinessModal(businessId) {
@@ -2031,6 +2087,11 @@ function formatCurrency(value) {
   }).format(Number(value || 0));
 }
 
+function getBusinessPlanValue(planName) {
+  const match = String(planName || "").replace(",", ".").match(/(\d+(?:\.\d{1,2})?)/);
+  return match ? Number(match[1]) : 49.9;
+}
+
 function formatTime(value) {
   return String(value || "").slice(0, 5);
 }
@@ -2048,6 +2109,34 @@ function formatDateShort(date) {
     day: "2-digit",
     month: "short",
   });
+}
+
+function formatMonthYear(date) {
+  if (!date) return "data não informada";
+  return new Date(date).toLocaleDateString("pt-BR", {
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatBillingLabel(status) {
+  const map = {
+    active: "Em dia",
+    blocked: "Bloqueado",
+    past_due: "Em atraso",
+    canceled: "Cancelado",
+    trial: "Trial",
+  };
+  return map[status] || "Não definido";
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function getTopServiceName() {

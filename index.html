@@ -75,34 +75,11 @@
   </div>
 
   <section id="loginPage">
-    <div class="auth-desktop-shell">
-      <div class="auth-desktop-copy">
-        <div class="landing-badge">AgendaFácil</div>
-        <h1>Painel web para salões e acesso interno da plataforma.</h1>
-        <p>
-          Lojistas entram para gerenciar agenda, serviços, equipe e link público. A conta interna de suporte
-          é separada e acessa apenas a gestão dos clientes da plataforma.
-        </p>
-        <div class="auth-copy-grid">
-          <div class="auth-copy-card">
-            <strong>Para lojistas</strong>
-            <span>Cadastro com criação do negócio, equipe e horários.</span>
-          </div>
-          <div class="auth-copy-card">
-            <strong>Para suporte AgendaFácil</strong>
-            <span>Acesso administrativo da plataforma, sem criar nova loja.</span>
-          </div>
-          <div class="auth-copy-card">
-            <strong>Ambiente web</strong>
-            <span>Layout pensado para uso no computador, com gestão completa.</span>
-          </div>
-        </div>
-      </div>
-
+    <div class="auth-center-shell">
       <div class="login-card desktop-login-card">
         <div class="logo-big">✂️</div>
         <div class="brand-name">AgendaFácil</div>
-        <div class="brand-sub">Acesse sua conta ou cadastre um novo salão</div>
+        <div class="brand-sub">Acesse sua conta ou cadastre o seu salão</div>
         <div class="connection-badge">Supabase conectado</div>
 
         <div class="auth-tabs">
@@ -357,16 +334,63 @@
         </div>
       </div>
       <div class="scroll-area p-4">
-        <div class="card">
-          <div class="input-group" style="margin-bottom:0;">
-            <label for="supportSearch">Buscar salão</label>
-            <input type="text" id="supportSearch" placeholder="Nome, slug ou e-mail" oninput="renderSupportBusinesses()" />
+        <div class="support-hero">
+          <div>
+            <div class="support-kicker">Operação da plataforma</div>
+            <h3>Visão central de lojas, cobrança e suporte</h3>
+            <p>Monitore a base ativa, localize clientes com rapidez e aja sem depender do painel do lojista.</p>
+          </div>
+          <div class="support-hero-side">
+            <div class="support-hero-pill">Plano padrão: R$ 49,90/mês</div>
+            <div class="support-hero-pill support-hero-pill-soft">Ambiente interno</div>
           </div>
         </div>
-        <div class="stat-grid">
-          <div class="stat-card"><div class="stat-icon">🏪</div><div class="stat-val" id="supportTotalBusinesses">0</div><div class="stat-label">Lojas cadastradas</div></div>
-          <div class="stat-card"><div class="stat-icon">🚫</div><div class="stat-val" id="supportBlockedBusinesses">0</div><div class="stat-label">Contas bloqueadas</div></div>
+
+        <div class="support-toolbar">
+          <div class="card">
+            <div class="input-group" style="margin-bottom:0;">
+              <label for="supportSearch">Buscar salão</label>
+              <input type="text" id="supportSearch" placeholder="Nome, slug, e-mail ou WhatsApp" oninput="renderSupportBusinesses()" />
+            </div>
+          </div>
+          <div class="support-filter-row">
+            <button class="btn btn-link btn-sm support-filter-btn is-active" data-filter="todos" type="button" onclick="setSupportFilter('todos', event)">Todas</button>
+            <button class="btn btn-link btn-sm support-filter-btn" data-filter="ativas" type="button" onclick="setSupportFilter('ativas', event)">Ativas</button>
+            <button class="btn btn-link btn-sm support-filter-btn" data-filter="bloqueadas" type="button" onclick="setSupportFilter('bloqueadas', event)">Bloqueadas</button>
+            <button class="btn btn-link btn-sm support-filter-btn" data-filter="sem_email" type="button" onclick="setSupportFilter('sem_email', event)">Sem e-mail</button>
+          </div>
         </div>
+
+        <div class="support-stat-grid">
+          <div class="support-stat-card">
+            <div class="support-stat-label">Lojas cadastradas</div>
+            <div class="support-stat-value" id="supportTotalBusinesses">0</div>
+          </div>
+          <div class="support-stat-card">
+            <div class="support-stat-label">Contas ativas</div>
+            <div class="support-stat-value" id="supportActiveBusinesses">0</div>
+          </div>
+          <div class="support-stat-card">
+            <div class="support-stat-label">Contas bloqueadas</div>
+            <div class="support-stat-value" id="supportBlockedBusinesses">0</div>
+          </div>
+          <div class="support-stat-card">
+            <div class="support-stat-label">MRR estimado</div>
+            <div class="support-stat-value" id="supportEstimatedMrr">R$ 0,00</div>
+          </div>
+          <div class="support-stat-card">
+            <div class="support-stat-label">Sem e-mail</div>
+            <div class="support-stat-value" id="supportNoEmailBusinesses">0</div>
+          </div>
+        </div>
+
+        <div class="support-section-head">
+          <div>
+            <h3>Lojas da plataforma</h3>
+            <p id="supportResultsLabel">0 resultados encontrados</p>
+          </div>
+        </div>
+
         <div id="supportBusinessList"></div>
       </div>
     </div>
