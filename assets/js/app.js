@@ -134,6 +134,8 @@ const state = {
   services: [],
   professionals: [],
   professionalServices: [],
+  customers: [],
+  appointmentSeries: [],
   appointments: [],
   hours: [],
   currentFilter: "todos",
@@ -191,6 +193,9 @@ function exposeActionsToWindow() {
     editAppointmentFromDetail,
     deleteAppointment,
     confirmDeleteAppointment,
+    openSeriesEditModal,
+    saveSeriesEdit,
+    deleteCurrentSeries,
     saveService,
     saveProfessional,
     openServiceModal,
@@ -217,6 +222,7 @@ function exposeActionsToWindow() {
     openBusinessWhatsApp,
     openBusinessInstagram,
     openHostedPublicPage,
+    toggleRecurrenceFields,
     handleBusinessLogoUpload,
     handleBusinessCoverUpload,
     toggleCardMenu,
@@ -448,20 +454,26 @@ async function refreshAllBusinessData() {
 
   const client = getSupabaseClient();
   const businessId = state.business.id;
-  const [servicesResult, professionalsResult, appointmentsResult, hoursResult] = await Promise.all([
+  const [servicesResult, professionalsResult, customersResult, seriesResult, appointmentsResult, hoursResult] = await Promise.all([
     client.from("services").select("*").eq("business_id", businessId).order("created_at", { ascending: true }),
     client.from("professionals").select("*").eq("business_id", businessId).order("created_at", { ascending: true }),
+    client.from("customers").select("*").eq("business_id", businessId).order("last_booking_at", { ascending: false }),
+    client.from("appointment_series").select("*").eq("business_id", businessId).order("created_at", { ascending: false }),
     client.from("appointments").select("*").eq("business_id", businessId).order("appointment_date", { ascending: true }).order("appointment_time", { ascending: true }),
     client.from("business_hours").select("*").eq("business_id", businessId).order("day_of_week", { ascending: true }),
   ]);
 
   if (servicesResult.error) throw servicesResult.error;
   if (professionalsResult.error) throw professionalsResult.error;
+  if (customersResult?.error) throw customersResult.error;
+  if (seriesResult?.error) throw seriesResult.error;
   if (appointmentsResult.error) throw appointmentsResult.error;
   if (hoursResult.error) throw hoursResult.error;
 
   state.services = servicesResult.data ?? [];
   state.professionals = professionalsResult.data ?? [];
+  state.customers = customersResult.data ?? [];
+  state.appointmentSeries = seriesResult.data ?? [];
 
   const professionalIds = state.professionals.map((item) => item.id);
   if (professionalIds.length) {
@@ -488,6 +500,7 @@ function renderAdmin() {
   renderServicos();
   renderProfissionais();
   renderHorarios();
+  renderCustomers();
   populateModalOptions();
   updatePublicLink();
 }
@@ -553,6 +566,7 @@ function renderApptList(filter) {
           const professional = findProfessional(appointment.professional_id);
           const status = STATUS_LABELS[appointment.status] || STATUS_LABELS.pendente;
           const dateStr = formatDateShort(appointment.appointment_date);
+          const recurrenceBadge = appointment.series_id ? `<span class="chip" style="margin:0 0 0 8px;padding:2px 8px;font-size:10px;">Recorrente</span>` : "";
           return `
             <div class="appt-item" onclick="openApptDetail('${appointment.id}')">
               <div>
@@ -560,7 +574,7 @@ function renderApptList(filter) {
                 <div class="text-xs text-sub">${dateStr}</div>
               </div>
               <div class="appt-info">
-                <div class="name">${appointment.client_name}</div>
+                <div class="name">${appointment.client_name}${recurrenceBadge}</div>
                 <div class="detail">${service?.name || "Servico"} · ${(professional?.emoji || "👤")} ${professional?.name || "Sem preferencia"}</div>
               </div>
               <span class="badge ${status.cls}">${status.label}</span>
@@ -568,6 +582,35 @@ function renderApptList(filter) {
         })
         .join("")
     : renderEmptyState("Nenhum agendamento encontrado.");
+}
+
+function renderCustomers() {
+  const container = document.getElementById("clientesList");
+  if (!container) return;
+  container.innerHTML = state.customers.length
+    ? state.customers
+        .map((customer) => {
+          const appointments = state.appointments.filter((item) => item.customer_id === customer.id);
+          const recurrentCount = appointments.filter((item) => item.series_id).length;
+          return `
+            <div class="card">
+              <div class="flex justify-between items-start gap-3">
+                <div>
+                  <div class="font-bold text-lg">${customer.name}</div>
+                  <div class="text-sm text-sub">${customer.email || "Sem e-mail"} · ${customer.phone}</div>
+                </div>
+                <span class="badge badge-brand">${appointments.length} agendamento(s)</span>
+              </div>
+              <div class="text-sm text-sub mt-2">Último contato: ${customer.last_booking_at ? formatTimelineDate(customer.last_booking_at) : "Ainda sem agendamento"}</div>
+              <div class="flex gap-2 mt-2" style="flex-wrap:wrap;">
+                <span class="chip">WhatsApp: ${customer.phone}</span>
+                ${customer.email ? `<span class="chip">E-mail: ${customer.email}</span>` : ""}
+                ${recurrentCount ? `<span class="chip">Recorrentes: ${recurrentCount}</span>` : ""}
+              </div>
+            </div>`;
+        })
+        .join("")
+    : renderEmptyState("Os clientes aparecerão aqui conforme fizerem agendamentos pelo link público.");
 }
 
 function renderServicos() {
@@ -842,7 +885,7 @@ function openSupportPublicLink(slug) {
   window.open(getPublicAppUrl(slug), "_blank");
 }
 
-function openSupportBusinessModal(businessId) {
+async function openSupportBusinessModal(businessId) {
   const business = state.supportBusinesses.find((item) => item.id === businessId);
   if (!business) return;
   state.supportSelectedBusinessId = businessId;
@@ -863,6 +906,7 @@ function openSupportBusinessModal(businessId) {
   document.getElementById("supportBusinessMiniEmail").textContent = business.owner_email || "Sem e-mail";
   document.getElementById("supportBusinessMiniBilling").textContent = formatBillingLabel(business.billing_status);
   renderSupportTimeline(businessId);
+  await renderSupportBusinessCustomers(businessId);
   openModal("modalSupportBusiness");
 }
 
@@ -1001,16 +1045,110 @@ function openApptDetail(id) {
   const service = findService(appointment.service_id);
   const professional = findProfessional(appointment.professional_id);
   const status = STATUS_LABELS[appointment.status] || STATUS_LABELS.pendente;
+  const series = appointment.series_id ? findSeries(appointment.series_id) : null;
 
   document.getElementById("detailClientName").textContent = appointment.client_name;
   document.getElementById("detailClientPhone").textContent = appointment.client_phone;
+  document.getElementById("detailClientEmail").textContent = appointment.client_email || "—";
   document.getElementById("detailService").textContent = service?.name || "—";
   document.getElementById("detailProf").textContent = professional?.name || "Sem preferencia";
   document.getElementById("detailDate").textContent = formatLongDate(appointment.appointment_date);
   document.getElementById("detailTime").textContent = formatTime(appointment.appointment_time);
+  document.getElementById("detailSeries").textContent = series ? `${formatRecurrenceLabel(series.recurrence_type)} · ${series.occurrences}x` : "Agendamento avulso";
   document.getElementById("detailPrice").textContent = formatCurrency(service?.price || 0);
   document.getElementById("detailStatus").innerHTML = `<span class="badge ${status.cls}">${status.label}</span>`;
+  document.getElementById("seriesActionRow").style.display = series ? "flex" : "none";
   openModal("modalApptDetail");
+}
+
+function openSeriesEditModal() {
+  const appointment = state.selectedAppointment;
+  if (!appointment?.series_id) return;
+  const series = findSeries(appointment.series_id);
+  if (!series) return;
+
+  document.getElementById("seriesEditService").innerHTML = state.services
+    .map((service) => `<option value="${service.id}" ${service.id === series.service_id ? "selected" : ""}>${service.name}</option>`)
+    .join("");
+  document.getElementById("seriesEditProfessional").innerHTML = [`<option value="">Sem preferência</option>`]
+    .concat(
+      state.professionals.map(
+        (professional) => `<option value="${professional.id}" ${professional.id === series.professional_id ? "selected" : ""}>${professional.name}</option>`
+      )
+    )
+    .join("");
+  document.getElementById("seriesEditStartDate").value = series.start_date;
+  document.getElementById("seriesEditTime").value = formatTime(series.appointment_time);
+  document.getElementById("seriesEditType").value = series.recurrence_type;
+  document.getElementById("seriesEditOccurrences").value = String(series.occurrences || 4);
+  document.getElementById("seriesEditNotes").value = series.notes || "";
+  openModal("modalSeriesEdit");
+}
+
+async function saveSeriesEdit() {
+  const appointment = state.selectedAppointment;
+  if (!appointment?.series_id) return;
+  const client = getSupabaseClient();
+  showLoading(true);
+  try {
+    const { error } = await client.rpc("update_appointment_series", {
+      p_series_id: appointment.series_id,
+      p_service_id: document.getElementById("seriesEditService").value,
+      p_professional_id: document.getElementById("seriesEditProfessional").value || null,
+      p_start_date: document.getElementById("seriesEditStartDate").value,
+      p_appointment_time: document.getElementById("seriesEditTime").value,
+      p_recurrence_type: document.getElementById("seriesEditType").value,
+      p_occurrences: Number(document.getElementById("seriesEditOccurrences").value || 4),
+      p_notes: document.getElementById("seriesEditNotes").value.trim() || null,
+    });
+    if (error) throw error;
+    if (state.isPlatformAdmin) {
+      await createSupportEvent({
+        businessId: appointment.business_id,
+        eventType: "series_updated",
+        title: "Recorrência atualizada",
+        details: `Série ${appointment.series_id} atualizada pelo suporte/lojista.`,
+      });
+    }
+    closeModal("modalSeriesEdit");
+    closeModal("modalApptDetail");
+    showToast("Recorrência atualizada com sucesso.");
+    await refreshAllBusinessData();
+  } catch (error) {
+    console.error(error);
+    showToast(getFriendlyAppointmentError(error));
+  } finally {
+    showLoading(false);
+  }
+}
+
+function deleteCurrentSeries() {
+  const appointment = state.selectedAppointment;
+  if (!appointment?.series_id) return;
+  openConfirmActionModal({
+    title: "Excluir recorrência",
+    message: "Deseja excluir toda a série recorrente e todos os seus agendamentos?",
+    confirmLabel: "Excluir recorrência",
+    confirmClass: "btn btn-danger",
+    onConfirm: async () => {
+      const client = getSupabaseClient();
+      const { error } = await client.rpc("delete_appointment_series", {
+        p_series_id: appointment.series_id,
+      });
+      if (error) throw error;
+      if (state.isPlatformAdmin) {
+        await createSupportEvent({
+          businessId: appointment.business_id,
+          eventType: "series_deleted",
+          title: "Recorrência excluída",
+          details: `Série ${appointment.series_id} removida.`,
+        });
+      }
+      closeModal("modalApptDetail");
+      showToast("Recorrência excluída.");
+      await refreshAllBusinessData();
+    },
+  });
 }
 
 function openAppointmentModal() {
@@ -1645,11 +1783,20 @@ function resetBookingFlow() {
   };
   pubStepHistory = [0];
   document.getElementById("clientName").value = "";
+  document.getElementById("clientEmail").value = "";
   document.getElementById("clientPhone").value = "";
+  document.getElementById("clientRecurrenceType").value = "none";
+  document.getElementById("clientRecurrenceCount").value = "4";
   document.getElementById("clientNotes").value = "";
+  toggleRecurrenceFields();
   document.getElementById("btnNextFromService").disabled = true;
   document.getElementById("btnNextFromProf").disabled = true;
   document.getElementById("btnNextFromDateTime").disabled = true;
+}
+
+function toggleRecurrenceFields() {
+  const type = document.getElementById("clientRecurrenceType")?.value || "none";
+  document.getElementById("clientRecurrenceCountGroup")?.classList.toggle("hidden", type === "none");
 }
 
 function startBooking(mode) {
@@ -1897,8 +2044,11 @@ function fillSummary() {
 
 async function confirmBooking() {
   const name = document.getElementById("clientName").value.trim();
+  const email = document.getElementById("clientEmail").value.trim();
   const phone = document.getElementById("clientPhone").value.trim();
   const notes = document.getElementById("clientNotes").value.trim();
+  const recurrenceType = document.getElementById("clientRecurrenceType").value;
+  const recurrenceCount = Number(document.getElementById("clientRecurrenceCount").value || 1);
   const service = state.publicData.services.find((item) => item.id === bookingState.serviceId);
   const professional = state.publicData.professionals.find((item) => item.id === bookingState.profId);
 
@@ -1910,16 +2060,18 @@ async function confirmBooking() {
   showLoading(true);
   try {
     const client = getSupabaseClient();
-    const { error } = await client.from("appointments").insert({
-      business_id: state.publicData.business.id,
-      service_id: service.id,
-      professional_id: professional?.id || null,
-      client_name: name,
-      client_phone: phone,
-      client_notes: notes,
-      appointment_date: bookingState.date,
-      appointment_time: bookingState.time,
-      status: "pendente",
+    const { error } = await client.rpc("create_public_booking", {
+      p_business_id: state.publicData.business.id,
+      p_service_id: service.id,
+      p_professional_id: professional?.id || null,
+      p_client_name: name,
+      p_client_phone: phone,
+      p_client_email: email || null,
+      p_client_notes: notes || null,
+      p_appointment_date: bookingState.date,
+      p_appointment_time: bookingState.time,
+      p_recurrence_type: recurrenceType,
+      p_occurrences: recurrenceType === "none" ? 1 : recurrenceCount,
     });
     if (error) throw error;
 
@@ -1938,8 +2090,11 @@ async function confirmBooking() {
 
     window._lastBooking = {
       name,
+      email,
       phone,
       notes,
+      recurrenceType,
+      recurrenceCount: recurrenceType === "none" ? 1 : recurrenceCount,
       service,
       professional,
       date: formatLongDate(bookingState.date),
@@ -1957,11 +2112,15 @@ async function confirmBooking() {
 function sendWAConfirmation() {
   const booking = window._lastBooking;
   if (!booking) return;
+  const recurrenceLine = booking.recurrenceType && booking.recurrenceType !== "none"
+    ? `Recorrencia: ${formatRecurrenceLabel(booking.recurrenceType)} (${booking.recurrenceCount} agendamentos)\n`
+    : "";
   const message = `Ola, ${booking.name}! Seu agendamento foi reservado com sucesso em ${booking.business.name}.\n\n` +
     `Servico: ${booking.service.name}\n` +
     `Profissional: ${booking.professional ? booking.professional.name : "Primeiro disponivel"}\n` +
     `Data: ${booking.date}\n` +
     `Horario: ${booking.time}\n` +
+    recurrenceLine +
     `Endereco: ${booking.business.address || "Nao informado"}\n\n` +
     `Se precisar remarcar, fale conosco pelo WhatsApp.`;
   window._waMsg = message;
@@ -2273,6 +2432,47 @@ function renderSupportTimeline(businessId) {
         )
         .join("")
     : `<div class="empty-state">Ainda não há histórico de suporte para esta loja.</div>`;
+}
+
+async function renderSupportBusinessCustomers(businessId) {
+  const container = document.getElementById("supportBusinessCustomers");
+  if (!container) return;
+  const client = getSupabaseClient();
+  const { data, error } = await client
+    .from("customers")
+    .select("*")
+    .eq("business_id", businessId)
+    .order("last_booking_at", { ascending: false })
+    .limit(6);
+  if (error) {
+    container.innerHTML = `<div class="empty-state">Não foi possível carregar os clientes dessa loja.</div>`;
+    return;
+  }
+  container.innerHTML = (data ?? []).length
+    ? (data ?? [])
+        .map(
+          (customer) => `
+            <div class="support-customer-item">
+              <div class="font-semibold">${customer.name}</div>
+              <div class="text-sm text-sub">${customer.email || "Sem e-mail"} · ${customer.phone}</div>
+            </div>`
+        )
+        .join("")
+    : `<div class="empty-state">Nenhum cliente capturado ainda.</div>`;
+}
+
+function findSeries(seriesId) {
+  return state.appointmentSeries.find((item) => item.id === seriesId) || null;
+}
+
+function formatRecurrenceLabel(type) {
+  const labels = {
+    weekly: "Semanal",
+    twice_weekly: "2x por semana",
+    monthly: "Mensal",
+    none: "Sem recorrência",
+  };
+  return labels[type] || "Sem recorrência";
 }
 
 function formatTimelineDate(value) {

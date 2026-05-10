@@ -49,6 +49,43 @@ create table if not exists public.platform_admins (
   created_at timestamptz default now()
 );
 
+create table if not exists public.user_directory (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  email text,
+  phone text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create table if not exists public.customers (
+  id uuid primary key default uuid_generate_v4(),
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  name text not null,
+  email text,
+  phone text not null,
+  notes text,
+  last_booking_at timestamptz,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique (business_id, phone)
+);
+
+create table if not exists public.appointment_series (
+  id uuid primary key default uuid_generate_v4(),
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  customer_id uuid references public.customers(id) on delete set null,
+  service_id uuid not null references public.services(id) on delete cascade,
+  professional_id uuid references public.professionals(id) on delete set null,
+  start_date date not null,
+  appointment_time time not null,
+  recurrence_type text not null
+    check (recurrence_type in ('weekly','twice_weekly','monthly')),
+  occurrences int not null default 4 check (occurrences >= 2 and occurrences <= 52),
+  notes text,
+  active boolean default true,
+  created_at timestamptz default now()
+);
+
 create table if not exists public.support_events (
   id uuid primary key default uuid_generate_v4(),
   business_id uuid not null references public.businesses(id) on delete cascade,
@@ -108,17 +145,26 @@ create table if not exists public.business_hours (
 create table if not exists public.appointments (
   id               uuid primary key default uuid_generate_v4(),
   business_id      uuid not null references public.businesses(id) on delete cascade,
+  customer_id      uuid references public.customers(id) on delete set null,
+  series_id        uuid references public.appointment_series(id) on delete set null,
   service_id       uuid references public.services(id),
   professional_id  uuid references public.professionals(id),
   client_name      text not null,
+  client_email     text,
   client_phone     text not null,
   client_notes     text,
   appointment_date date not null,
   appointment_time time not null,
+  occurrence_index int not null default 1,
   status           text not null default 'pendente'
     check (status in ('pendente','confirmado','concluido','cancelado')),
   created_at       timestamptz default now()
 );
+
+alter table public.appointments add column if not exists customer_id uuid references public.customers(id) on delete set null;
+alter table public.appointments add column if not exists series_id uuid references public.appointment_series(id) on delete set null;
+alter table public.appointments add column if not exists client_email text;
+alter table public.appointments add column if not exists occurrence_index int not null default 1;
 
 -- ============================================================
 -- ROW LEVEL SECURITY (RLS)
@@ -126,6 +172,9 @@ create table if not exists public.appointments (
 
 alter table public.businesses       enable row level security;
 alter table public.platform_admins  enable row level security;
+alter table public.user_directory   enable row level security;
+alter table public.customers        enable row level security;
+alter table public.appointment_series enable row level security;
 alter table public.support_events   enable row level security;
 alter table public.services         enable row level security;
 alter table public.professionals    enable row level security;
@@ -151,7 +200,53 @@ $$;
 
 grant execute on function public.is_platform_admin() to authenticated;
 
+create or replace function public.handle_user_directory_sync()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+begin
+  insert into public.user_directory (user_id, email, phone, created_at, updated_at)
+  values (new.id, new.email, new.phone, coalesce(new.created_at, now()), now())
+  on conflict (user_id) do update
+    set email = excluded.email,
+        phone = excluded.phone,
+        updated_at = now();
+
+  update public.businesses
+     set owner_email = new.email
+   where owner_id = new.id
+     and coalesce(owner_email, '') = '';
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_handle_user_directory_sync on auth.users;
+create trigger trg_handle_user_directory_sync
+after insert or update of email, phone on auth.users
+for each row
+execute function public.handle_user_directory_sync();
+
+insert into public.user_directory (user_id, email, phone, created_at, updated_at)
+select id, email, phone, coalesce(created_at, now()), now()
+from auth.users
+on conflict (user_id) do update
+  set email = excluded.email,
+      phone = excluded.phone,
+      updated_at = now();
+
+update public.businesses b
+   set owner_email = u.email
+  from public.user_directory u
+ where b.owner_id = u.user_id
+   and coalesce(b.owner_email, '') = '';
+
 drop policy if exists "platform_admin_self_select" on public.platform_admins;
+drop policy if exists "user_directory_self_or_platform_admin" on public.user_directory;
+drop policy if exists "owner_manage_customers" on public.customers;
+drop policy if exists "owner_manage_series" on public.appointment_series;
 drop policy if exists "platform_admin_manage_support_events" on public.support_events;
 drop policy if exists "owner_select_business" on public.businesses;
 drop policy if exists "owner_insert_business" on public.businesses;
@@ -172,6 +267,25 @@ drop policy if exists "public_insert_appointment" on public.appointments;
 -- ── BUSINESSES policies ──────────────────────────────────────
 create policy "platform_admin_self_select" on public.platform_admins
   for select using (user_id = auth.uid());
+
+create policy "user_directory_self_or_platform_admin" on public.user_directory
+  for select using (user_id = auth.uid() or public.is_platform_admin());
+
+create policy "owner_manage_customers" on public.customers
+  for all using (
+    business_id in (select id from public.businesses where owner_id = auth.uid() or public.is_platform_admin())
+  )
+  with check (
+    business_id in (select id from public.businesses where owner_id = auth.uid() or public.is_platform_admin())
+  );
+
+create policy "owner_manage_series" on public.appointment_series
+  for all using (
+    business_id in (select id from public.businesses where owner_id = auth.uid() or public.is_platform_admin())
+  )
+  with check (
+    business_id in (select id from public.businesses where owner_id = auth.uid() or public.is_platform_admin())
+  );
 
 create policy "platform_admin_manage_support_events" on public.support_events
   for all using (public.is_platform_admin())
@@ -261,6 +375,292 @@ create policy "public_insert_appointment" on public.appointments
 -- ============================================================
 -- FUNÇÕES AUXILIARES
 -- ============================================================
+
+create or replace function public.compute_recurrence_date(
+  p_start_date date,
+  p_recurrence_type text,
+  p_index int
+) returns date
+language plpgsql
+immutable
+as $$
+begin
+  if p_recurrence_type = 'weekly' then
+    return p_start_date + ((p_index - 1) * 7);
+  elsif p_recurrence_type = 'twice_weekly' then
+    return case
+      when mod(p_index - 1, 2) = 0 then p_start_date + ((p_index - 1) / 2) * 7
+      else p_start_date + (((p_index - 2) / 2) * 7) + 3
+    end;
+  elsif p_recurrence_type = 'monthly' then
+    return (p_start_date + make_interval(months => p_index - 1))::date;
+  end if;
+  return p_start_date;
+end;
+$$;
+
+create or replace function public.create_public_booking(
+  p_business_id uuid,
+  p_service_id uuid,
+  p_professional_id uuid,
+  p_client_name text,
+  p_client_phone text,
+  p_client_email text,
+  p_client_notes text,
+  p_appointment_date date,
+  p_appointment_time time,
+  p_recurrence_type text default null,
+  p_occurrences int default 1
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_customer_id uuid;
+  v_series_id uuid;
+  v_appointment_id uuid;
+  v_count int := greatest(coalesce(p_occurrences, 1), 1);
+  v_occurrence_date date;
+  v_ids uuid[] := '{}';
+  v_business_active boolean;
+begin
+  select active into v_business_active
+  from public.businesses
+  where id = p_business_id;
+
+  if coalesce(v_business_active, false) = false then
+    raise exception 'Negocio indisponivel para agendamento.';
+  end if;
+
+  insert into public.customers (business_id, name, email, phone, notes, last_booking_at, updated_at)
+  values (p_business_id, p_client_name, nullif(trim(p_client_email), ''), p_client_phone, nullif(trim(p_client_notes), ''), now(), now())
+  on conflict (business_id, phone) do update
+    set name = excluded.name,
+        email = coalesce(excluded.email, public.customers.email),
+        notes = coalesce(excluded.notes, public.customers.notes),
+        last_booking_at = now(),
+        updated_at = now()
+  returning id into v_customer_id;
+
+  if coalesce(nullif(trim(p_recurrence_type), ''), 'none') not in ('none', 'weekly', 'twice_weekly', 'monthly') then
+    raise exception 'Tipo de recorrencia invalido.';
+  end if;
+
+  if coalesce(nullif(trim(p_recurrence_type), ''), 'none') <> 'none' then
+    if v_count < 2 then
+      raise exception 'Agendamento recorrente precisa de pelo menos 2 ocorrencias.';
+    end if;
+
+    insert into public.appointment_series (
+      business_id,
+      customer_id,
+      service_id,
+      professional_id,
+      start_date,
+      appointment_time,
+      recurrence_type,
+      occurrences,
+      notes,
+      active
+    ) values (
+      p_business_id,
+      v_customer_id,
+      p_service_id,
+      p_professional_id,
+      p_appointment_date,
+      p_appointment_time,
+      p_recurrence_type,
+      v_count,
+      nullif(trim(p_client_notes), ''),
+      true
+    )
+    returning id into v_series_id;
+  end if;
+
+  for i in 1..v_count loop
+    v_occurrence_date := case
+      when v_series_id is null then p_appointment_date
+      else public.compute_recurrence_date(p_appointment_date, p_recurrence_type, i)
+    end;
+
+    insert into public.appointments (
+      business_id,
+      customer_id,
+      series_id,
+      service_id,
+      professional_id,
+      client_name,
+      client_email,
+      client_phone,
+      client_notes,
+      appointment_date,
+      appointment_time,
+      occurrence_index,
+      status
+    ) values (
+      p_business_id,
+      v_customer_id,
+      v_series_id,
+      p_service_id,
+      p_professional_id,
+      p_client_name,
+      nullif(trim(p_client_email), ''),
+      p_client_phone,
+      nullif(trim(p_client_notes), ''),
+      v_occurrence_date,
+      p_appointment_time,
+      i,
+      'pendente'
+    )
+    returning id into v_appointment_id;
+
+    v_ids := array_append(v_ids, v_appointment_id);
+  end loop;
+
+  return jsonb_build_object(
+    'series_id', v_series_id,
+    'customer_id', v_customer_id,
+    'appointment_ids', v_ids,
+    'occurrences', v_count
+  );
+end;
+$$;
+
+grant execute on function public.create_public_booking(uuid, uuid, uuid, text, text, text, text, date, time, text, int) to anon, authenticated;
+
+create or replace function public.delete_appointment_series(
+  p_series_id uuid
+) returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_business_id uuid;
+begin
+  select business_id into v_business_id
+  from public.appointment_series
+  where id = p_series_id;
+
+  if v_business_id is null then
+    raise exception 'Serie nao encontrada.';
+  end if;
+
+  if not exists (
+    select 1
+    from public.businesses
+    where id = v_business_id
+      and (owner_id = auth.uid() or public.is_platform_admin())
+  ) then
+    raise exception 'Sem permissao para excluir esta serie.';
+  end if;
+
+  delete from public.appointments where series_id = p_series_id;
+  delete from public.appointment_series where id = p_series_id;
+end;
+$$;
+
+grant execute on function public.delete_appointment_series(uuid) to authenticated;
+
+create or replace function public.update_appointment_series(
+  p_series_id uuid,
+  p_service_id uuid,
+  p_professional_id uuid,
+  p_start_date date,
+  p_appointment_time time,
+  p_recurrence_type text,
+  p_occurrences int,
+  p_notes text
+) returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_series public.appointment_series%rowtype;
+  v_customer public.customers%rowtype;
+  v_occurrence_date date;
+begin
+  select * into v_series
+  from public.appointment_series
+  where id = p_series_id;
+
+  if v_series.id is null then
+    raise exception 'Serie nao encontrada.';
+  end if;
+
+  if not exists (
+    select 1
+    from public.businesses
+    where id = v_series.business_id
+      and (owner_id = auth.uid() or public.is_platform_admin())
+  ) then
+    raise exception 'Sem permissao para editar esta serie.';
+  end if;
+
+  if p_recurrence_type not in ('weekly', 'twice_weekly', 'monthly') then
+    raise exception 'Tipo de recorrencia invalido.';
+  end if;
+
+  if p_occurrences < 2 then
+    raise exception 'Serie precisa de pelo menos 2 ocorrencias.';
+  end if;
+
+  select * into v_customer
+  from public.customers
+  where id = v_series.customer_id;
+
+  delete from public.appointments where series_id = p_series_id;
+
+  update public.appointment_series
+     set service_id = p_service_id,
+         professional_id = p_professional_id,
+         start_date = p_start_date,
+         appointment_time = p_appointment_time,
+         recurrence_type = p_recurrence_type,
+         occurrences = p_occurrences,
+         notes = nullif(trim(p_notes), ''),
+         active = true
+   where id = p_series_id;
+
+  for i in 1..p_occurrences loop
+    v_occurrence_date := public.compute_recurrence_date(p_start_date, p_recurrence_type, i);
+
+    insert into public.appointments (
+      business_id,
+      customer_id,
+      series_id,
+      service_id,
+      professional_id,
+      client_name,
+      client_email,
+      client_phone,
+      client_notes,
+      appointment_date,
+      appointment_time,
+      occurrence_index,
+      status
+    ) values (
+      v_series.business_id,
+      v_series.customer_id,
+      p_series_id,
+      p_service_id,
+      p_professional_id,
+      coalesce(v_customer.name, 'Cliente'),
+      v_customer.email,
+      coalesce(v_customer.phone, ''),
+      coalesce(nullif(trim(p_notes), ''), v_customer.notes),
+      v_occurrence_date,
+      p_appointment_time,
+      i,
+      'pendente'
+    );
+  end loop;
+end;
+$$;
+
+grant execute on function public.update_appointment_series(uuid, uuid, uuid, date, time, text, int, text) to authenticated;
 
 -- Verifica disponibilidade de um horário
 drop function if exists public.is_slot_available(uuid, uuid, uuid, date, time);
