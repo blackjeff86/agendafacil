@@ -204,9 +204,9 @@ function exposeActionsToWindow() {
     openBusinessWhatsApp,
     openBusinessInstagram,
     openHostedPublicPage,
-    clearSeedData,
     handleBusinessLogoUpload,
     handleBusinessCoverUpload,
+    toggleCardMenu,
     openModal,
     closeModal,
     toggleHourInputs,
@@ -248,6 +248,15 @@ function setupStaticBehavior() {
     modal.addEventListener("click", (event) => {
       if (event.target === modal) {
         modal.classList.remove("open");
+      }
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    const insideMenu = event.target.closest(".card-menu");
+    document.querySelectorAll(".card-menu").forEach((menu) => {
+      if (!insideMenu || menu !== insideMenu) {
+        menu.classList.remove("open");
       }
     });
   });
@@ -488,19 +497,24 @@ function renderServicos() {
             <div class="card card-sm flex items-center gap-3" style="margin-bottom:10px;">
               <div class="service-icon">${service.icon || "✂️"}</div>
               <div style="flex:1;">
-                <div class="flex justify-between items-center">
+                <div class="flex justify-between items-center gap-2">
                   <div class="font-semibold">${service.name}</div>
-                  <span class="badge ${service.active ? "badge-success" : "badge-danger"}">${service.active ? "Ativo" : "Inativo"}</span>
+                  <div class="flex items-center gap-2">
+                    <span class="badge ${service.active ? "badge-success" : "badge-danger"}">${service.active ? "Ativo" : "Inativo"}</span>
+                    <div class="card-menu" id="service-menu-${service.id}">
+                      <button class="card-menu-btn" type="button" onclick="toggleCardMenu('service-menu-${service.id}')">⋯</button>
+                      <div class="card-menu-sheet">
+                        <button class="card-menu-item" type="button" onclick="editService('${service.id}')">Editar</button>
+                        <button class="card-menu-item danger" type="button" onclick="deleteService('${service.id}')">Excluir</button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <div class="text-sm text-sub mt-1">${service.description || ""}</div>
                 <div class="flex gap-3 mt-1">
                   <span class="text-sm font-bold text-brand">${formatCurrency(service.price)}</span>
                   <span class="text-sm text-sub">⏱ ${service.duration} min</span>
                   <span class="chip" style="margin:0;padding:2px 8px;font-size:10px;">${service.category || "Servico"}</span>
-                </div>
-                <div class="card-actions">
-                  <button class="btn btn-link btn-sm" type="button" onclick="editService('${service.id}')">Editar</button>
-                  <button class="btn btn-danger btn-sm" type="button" onclick="deleteService('${service.id}')">Excluir</button>
                 </div>
               </div>
             </div>`
@@ -522,16 +536,21 @@ function renderProfissionais() {
             <div class="card card-sm flex items-center gap-3" style="margin-bottom:10px;">
               <div class="avatar avatar-lg">${professional.emoji || "👤"}</div>
               <div style="flex:1;">
-                <div class="flex justify-between items-center">
+                <div class="flex justify-between items-center gap-2">
                   <div class="font-bold">${professional.name}</div>
-                  <span class="badge ${professional.active ? "badge-success" : "badge-danger"}">${professional.active ? "Ativo" : "Inativo"}</span>
+                  <div class="flex items-center gap-2">
+                    <span class="badge ${professional.active ? "badge-success" : "badge-danger"}">${professional.active ? "Ativo" : "Inativo"}</span>
+                    <div class="card-menu" id="professional-menu-${professional.id}">
+                      <button class="card-menu-btn" type="button" onclick="toggleCardMenu('professional-menu-${professional.id}')">⋯</button>
+                      <div class="card-menu-sheet">
+                        <button class="card-menu-item" type="button" onclick="editProfessional('${professional.id}')">Editar</button>
+                        <button class="card-menu-item danger" type="button" onclick="deleteProfessional('${professional.id}')">Excluir</button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <div class="text-sm text-sub">${professional.role || ""}</div>
                 <div class="mt-1">${serviceNames.map((name) => `<span class="chip" style="margin-bottom:0;">${name}</span>`).join("")}</div>
-                <div class="card-actions">
-                  <button class="btn btn-link btn-sm" type="button" onclick="editProfessional('${professional.id}')">Editar</button>
-                  <button class="btn btn-danger btn-sm" type="button" onclick="deleteProfessional('${professional.id}')">Excluir</button>
-                </div>
               </div>
             </div>`;
         })
@@ -1542,40 +1561,6 @@ function openHostedPublicPage() {
   window.open(getPublicAppUrl(state.business.slug), "_blank");
 }
 
-async function clearSeedData() {
-  if (!state.business) return;
-  if (!window.confirm("Isso vai apagar servicos, equipe e agendamentos atuais. Deseja continuar?")) {
-    return;
-  }
-
-  showLoading(true);
-  try {
-    const client = getSupabaseClient();
-    const { error: appointmentError } = await client.from("appointments").delete().eq("business_id", state.business.id);
-    if (appointmentError) throw appointmentError;
-
-    const professionalIds = state.professionals.map((item) => item.id);
-    if (professionalIds.length) {
-      const { error: pivotError } = await client.from("professional_services").delete().in("professional_id", professionalIds);
-      if (pivotError) throw pivotError;
-    }
-
-    const { error: professionalsError } = await client.from("professionals").delete().eq("business_id", state.business.id);
-    if (professionalsError) throw professionalsError;
-
-    const { error: servicesError } = await client.from("services").delete().eq("business_id", state.business.id);
-    if (servicesError) throw servicesError;
-
-    showToast("Dados iniciais removidos. Agora voce pode cadastrar tudo do zero.");
-    await refreshAllBusinessData();
-  } catch (error) {
-    console.error(error);
-    showToast(getErrorMessage(error));
-  } finally {
-    showLoading(false);
-  }
-}
-
 async function deleteAppointment() {
   if (!state.selectedAppointment) return;
   if (!window.confirm(`Excluir o agendamento de "${state.selectedAppointment.client_name}"?`)) {
@@ -1790,6 +1775,16 @@ function applyBusinessPreview(business) {
     cover.style.backgroundImage = coverImage ? `linear-gradient(rgba(30,27,75,.15), rgba(30,27,75,.15)), url(${coverImage})` : "";
     cover.style.backgroundSize = "cover";
     cover.style.backgroundPosition = "center";
+  }
+}
+
+function toggleCardMenu(menuId) {
+  const menu = document.getElementById(menuId);
+  if (!menu) return;
+  const isOpen = menu.classList.contains("open");
+  document.querySelectorAll(".card-menu").forEach((item) => item.classList.remove("open"));
+  if (!isOpen) {
+    menu.classList.add("open");
   }
 }
 
