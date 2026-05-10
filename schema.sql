@@ -49,6 +49,17 @@ create table if not exists public.platform_admins (
   created_at timestamptz default now()
 );
 
+create table if not exists public.support_events (
+  id uuid primary key default uuid_generate_v4(),
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  actor_user_id uuid references auth.users(id) on delete set null,
+  actor_email text,
+  event_type text not null,
+  title text not null,
+  details text,
+  created_at timestamptz default now()
+);
+
 -- ── SERVICES ────────────────────────────────────────────────
 create table if not exists public.services (
   id          uuid primary key default uuid_generate_v4(),
@@ -115,6 +126,7 @@ create table if not exists public.appointments (
 
 alter table public.businesses       enable row level security;
 alter table public.platform_admins  enable row level security;
+alter table public.support_events   enable row level security;
 alter table public.services         enable row level security;
 alter table public.professionals    enable row level security;
 alter table public.professional_services enable row level security;
@@ -140,6 +152,7 @@ $$;
 grant execute on function public.is_platform_admin() to authenticated;
 
 drop policy if exists "platform_admin_self_select" on public.platform_admins;
+drop policy if exists "platform_admin_manage_support_events" on public.support_events;
 drop policy if exists "owner_select_business" on public.businesses;
 drop policy if exists "owner_insert_business" on public.businesses;
 drop policy if exists "owner_update_business" on public.businesses;
@@ -159,6 +172,10 @@ drop policy if exists "public_insert_appointment" on public.appointments;
 -- ── BUSINESSES policies ──────────────────────────────────────
 create policy "platform_admin_self_select" on public.platform_admins
   for select using (user_id = auth.uid());
+
+create policy "platform_admin_manage_support_events" on public.support_events
+  for all using (public.is_platform_admin())
+  with check (public.is_platform_admin());
 
 create policy "owner_select_business" on public.businesses
   for select using (owner_id = auth.uid() or public.is_platform_admin());

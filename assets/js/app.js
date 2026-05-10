@@ -2,6 +2,8 @@ const SUPABASE_URL = "https://vjwrgibbirtaeyqbzoxk.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ha-xTX201rlnk1_eVm46pg_XZOrdl3v";
 const APP_BASE_URL = "https://agendafacil-two.vercel.app";
 const SUPPORT_ACCOUNT_EMAIL = "agendafacil26@gmail.com";
+const STANDARD_MONTHLY_PRICE = 49.9;
+const SUPPORT_PAGE_SIZE = 6;
 
 let supabaseClient = null;
 
@@ -141,9 +143,11 @@ const state = {
   editingProfessionalId: null,
   pendingConfirmAction: null,
   supportBusinesses: [],
+  supportEvents: [],
   supportSelectedBusinessId: null,
   supportContextBusinessId: null,
   supportFilter: "todos",
+  supportPage: 1,
   publicData: {
     business: null,
     services: [],
@@ -224,6 +228,8 @@ function exposeActionsToWindow() {
     toggleBusinessBlocked,
     supportCreateService,
     supportCreateProfessional,
+    prevSupportPage,
+    nextSupportPage,
     setSupportFilter,
     openSupportPublicLink,
     openModal,
@@ -685,12 +691,29 @@ function updatePublicLink() {
 async function loadSupportBusinesses() {
   if (!state.isPlatformAdmin) {
     state.supportBusinesses = [];
+    state.supportEvents = [];
     return;
   }
   const client = getSupabaseClient();
   const { data, error } = await client.from("businesses").select("*").order("created_at", { ascending: false });
   if (error) throw error;
   state.supportBusinesses = (data ?? []).filter((business) => !isSupportInternalBusiness(business));
+  const businessIds = state.supportBusinesses.map((business) => business.id);
+  if (businessIds.length) {
+    const { data: events, error: eventsError } = await client
+      .from("support_events")
+      .select("*")
+      .in("business_id", businessIds)
+      .order("created_at", { ascending: false });
+    if (eventsError) {
+      console.warn("Support events unavailable:", eventsError.message);
+      state.supportEvents = [];
+    } else {
+      state.supportEvents = events ?? [];
+    }
+  } else {
+    state.supportEvents = [];
+  }
   renderSupportBusinesses();
 }
 
@@ -708,14 +731,19 @@ function renderSupportBusinesses() {
     return matchesSearch && matchesFilter;
   });
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / SUPPORT_PAGE_SIZE));
+  state.supportPage = Math.min(state.supportPage, totalPages);
+  const start = (state.supportPage - 1) * SUPPORT_PAGE_SIZE;
+  const paginated = filtered.slice(start, start + SUPPORT_PAGE_SIZE);
+
   document.getElementById("supportTotalBusinesses").textContent = String(state.supportBusinesses.length);
   document.getElementById("supportActiveBusinesses").textContent = String(state.supportBusinesses.filter((item) => item.active).length);
   document.getElementById("supportBlockedBusinesses").textContent = String(state.supportBusinesses.filter((item) => !item.active).length);
   document.getElementById("supportNoEmailBusinesses").textContent = String(state.supportBusinesses.filter((item) => !item.owner_email).length);
-  document.getElementById("supportEstimatedMrr").textContent = formatCurrency(state.supportBusinesses.reduce((sum, item) => sum + getBusinessPlanValue(item.plan_name), 0));
+  document.getElementById("supportEstimatedMrr").textContent = formatCurrency(state.supportBusinesses.filter((item) => item.active).length * STANDARD_MONTHLY_PRICE);
   document.getElementById("supportResultsLabel").textContent = `${filtered.length} resultado(s) encontrado(s)`;
-  document.getElementById("supportBusinessList").innerHTML = filtered.length
-    ? filtered
+  document.getElementById("supportBusinessList").innerHTML = paginated.length
+    ? paginated
         .map(
           (business) => `
             <div class="support-business-card ${business.active ? "" : "soft-inactive"}">
@@ -747,7 +775,7 @@ function renderSupportBusinesses() {
               </div>
 
               <div class="support-business-plan-row">
-                <span class="chip">${business.plan_name || "Plano Mensal 49,90"}</span>
+                <span class="chip">${normalizePlanName(business.plan_name)}</span>
                 ${business.support_notes ? `<span class="support-note-preview">${escapeHtml(business.support_notes)}</span>` : `<span class="support-note-preview empty">Sem notas de suporte</span>`}
               </div>
 
@@ -761,10 +789,20 @@ function renderSupportBusinesses() {
         )
         .join("")
     : renderEmptyState("Nenhuma loja encontrada.");
+
+  const pageLabel = document.getElementById("supportPageLabel");
+  const prevButton = document.getElementById("supportPrevPageButton");
+  const nextButton = document.getElementById("supportNextPageButton");
+  if (pageLabel) {
+    pageLabel.textContent = `Página ${state.supportPage} de ${totalPages}`;
+  }
+  if (prevButton) prevButton.disabled = state.supportPage <= 1;
+  if (nextButton) nextButton.disabled = state.supportPage >= totalPages;
 }
 
 function setSupportFilter(filter, event) {
   state.supportFilter = filter;
+  state.supportPage = 1;
   document.querySelectorAll(".support-filter-btn").forEach((button) => {
     const active = button.dataset.filter === filter;
     button.classList.toggle("is-active", active);
@@ -777,6 +815,29 @@ function setSupportFilter(filter, event) {
   renderSupportBusinesses();
 }
 
+function prevSupportPage() {
+  if (state.supportPage <= 1) return;
+  state.supportPage -= 1;
+  renderSupportBusinesses();
+}
+
+function nextSupportPage() {
+  const totalPages = Math.max(1, Math.ceil(state.supportBusinesses.filter((business) => {
+    const search = document.getElementById("supportSearch")?.value?.trim().toLowerCase() || "";
+    const haystack = [business.name, business.slug, business.owner_email, business.whatsapp].join(" ").toLowerCase();
+    const matchesSearch = haystack.includes(search);
+    const matchesFilter =
+      state.supportFilter === "todos" ||
+      (state.supportFilter === "ativas" && business.active) ||
+      (state.supportFilter === "bloqueadas" && !business.active) ||
+      (state.supportFilter === "sem_email" && !business.owner_email);
+    return matchesSearch && matchesFilter;
+  }).length / SUPPORT_PAGE_SIZE));
+  if (state.supportPage >= totalPages) return;
+  state.supportPage += 1;
+  renderSupportBusinesses();
+}
+
 function openSupportPublicLink(slug) {
   window.open(getPublicAppUrl(slug), "_blank");
 }
@@ -786,13 +847,22 @@ function openSupportBusinessModal(businessId) {
   if (!business) return;
   state.supportSelectedBusinessId = businessId;
   document.getElementById("supportBusinessTitle").textContent = `Gestão da loja · ${business.name}`;
+  document.getElementById("supportBusinessHeaderName").textContent = business.name;
+  document.getElementById("supportBusinessHeaderMeta").textContent = `${business.category || "Salão"} · ${business.slug ? `/?slug=${business.slug}` : "Sem link público"}`;
+  document.getElementById("supportBusinessHeaderStatus").textContent = business.active ? "Conta ativa" : "Conta bloqueada";
+  document.getElementById("supportBusinessHeaderStatus").className = `badge ${business.active ? "badge-success" : "badge-danger"}`;
   document.getElementById("supportBusinessName").value = business.name || "";
   document.getElementById("supportBusinessOwnerEmail").value = business.owner_email || "";
   document.getElementById("supportBusinessWhatsapp").value = business.whatsapp || "";
-  document.getElementById("supportBusinessPlan").value = business.plan_name || "Plano Mensal 49,90";
+  document.getElementById("supportBusinessPlan").value = normalizePlanName(business.plan_name);
   document.getElementById("supportBusinessBilling").value = business.billing_status || "active";
   document.getElementById("supportBusinessBlockedReason").value = business.blocked_reason || "";
   document.getElementById("supportBusinessNotes").value = business.support_notes || "";
+  document.getElementById("supportBusinessMiniMrr").textContent = formatCurrency(STANDARD_MONTHLY_PRICE);
+  document.getElementById("supportBusinessMiniCreated").textContent = formatMonthYear(business.created_at);
+  document.getElementById("supportBusinessMiniEmail").textContent = business.owner_email || "Sem e-mail";
+  document.getElementById("supportBusinessMiniBilling").textContent = formatBillingLabel(business.billing_status);
+  renderSupportTimeline(businessId);
   openModal("modalSupportBusiness");
 }
 
@@ -815,6 +885,12 @@ async function saveSupportBusiness() {
   try {
     const { error } = await client.from("businesses").update(payload).eq("id", state.supportSelectedBusinessId);
     if (error) throw error;
+    await createSupportEvent({
+      businessId: state.supportSelectedBusinessId,
+      eventType: "business_updated",
+      title: "Dados da loja atualizados",
+      details: `Cobrança: ${formatBillingLabel(billingStatus)}. Plano: ${payload.plan_name}.`,
+    });
     closeModal("modalSupportBusiness");
     showToast("Dados de suporte salvos.");
     await loadSupportBusinesses();
@@ -839,7 +915,14 @@ async function sendSupportPasswordReset(businessId = null) {
       redirectTo: `${APP_BASE_URL}/?app=login`,
     });
     if (error) throw error;
+    await createSupportEvent({
+      businessId: targetBusiness.id,
+      eventType: "password_reset",
+      title: "Redefinição de senha enviada",
+      details: `Reset enviado para ${targetBusiness.owner_email}.`,
+    });
     showToast("E-mail de redefinição enviado.");
+    await loadSupportBusinesses();
   } catch (error) {
     console.error(error);
     showToast(getErrorMessage(error));
@@ -865,6 +948,12 @@ function toggleBusinessBlocked(businessId) {
         : { active: true, billing_status: "active", blocked_reason: null };
       const { error } = await client.from("businesses").update(payload).eq("id", businessId);
       if (error) throw error;
+      await createSupportEvent({
+        businessId,
+        eventType: business.active ? "account_blocked" : "account_unblocked",
+        title: business.active ? "Conta bloqueada" : "Conta desbloqueada",
+        details: business.active ? payload.blocked_reason : "Conta reativada e cobrança voltando para ativa.",
+      });
       showToast(business.active ? "Conta bloqueada." : "Conta desbloqueada.");
       await loadSupportBusinesses();
     },
@@ -1211,6 +1300,7 @@ async function saveService() {
   const client = getSupabaseClient();
   const isEditing = Boolean(state.editingServiceId);
   const targetBusinessId = state.supportContextBusinessId || state.business.id;
+  const fromSupport = Boolean(state.supportContextBusinessId);
   const payload = {
     business_id: targetBusinessId,
     name: document.getElementById("newServiceName").value.trim(),
@@ -1233,6 +1323,14 @@ async function saveService() {
       ? await client.from("services").update(payload).eq("id", state.editingServiceId)
       : await client.from("services").insert(payload);
     if (error) throw error;
+    if (fromSupport) {
+      await createSupportEvent({
+        businessId: targetBusinessId,
+        eventType: isEditing ? "service_updated" : "service_created",
+        title: isEditing ? "Serviço atualizado pelo suporte" : "Serviço criado pelo suporte",
+        details: `${payload.name} · ${formatCurrency(payload.price)} · ${payload.duration} min`,
+      });
+    }
     closeServiceModal();
     resetServiceModal();
     showToast(isEditing ? "Servico atualizado com sucesso." : "Servico salvo com sucesso.");
@@ -1256,6 +1354,7 @@ async function saveProfessional() {
   const client = getSupabaseClient();
   const isEditing = Boolean(state.editingProfessionalId);
   const targetBusinessId = state.supportContextBusinessId || state.business.id;
+  const fromSupport = Boolean(state.supportContextBusinessId);
 
   const selectedServiceIds = Array.from(document.getElementById("newProfServices").selectedOptions).map((option) => option.value);
   const payload = {
@@ -1291,6 +1390,15 @@ async function saveProfessional() {
         }))
       );
       if (pivotError) throw pivotError;
+    }
+
+    if (fromSupport) {
+      await createSupportEvent({
+        businessId: targetBusinessId,
+        eventType: isEditing ? "professional_updated" : "professional_created",
+        title: isEditing ? "Profissional atualizado pelo suporte" : "Profissional criado pelo suporte",
+        details: `${payload.name}${payload.role ? ` · ${payload.role}` : ""}`,
+      });
     }
 
     closeProfessionalModal();
@@ -2080,16 +2188,18 @@ function applyBodyMode(mode) {
   document.body.classList.add(`body-${mode}`);
 }
 
+function normalizePlanName(planName) {
+  if (!planName || /29,90/.test(planName)) {
+    return "Plano Mensal 49,90";
+  }
+  return planName;
+}
+
 function formatCurrency(value) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
   }).format(Number(value || 0));
-}
-
-function getBusinessPlanValue(planName) {
-  const match = String(planName || "").replace(",", ".").match(/(\d+(?:\.\d{1,2})?)/);
-  return match ? Number(match[1]) : 49.9;
 }
 
 function formatTime(value) {
@@ -2137,6 +2247,60 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function getSupportEventsForBusiness(businessId) {
+  return state.supportEvents.filter((event) => event.business_id === businessId);
+}
+
+function renderSupportTimeline(businessId) {
+  const container = document.getElementById("supportTimelineList");
+  if (!container) return;
+  const events = getSupportEventsForBusiness(businessId);
+  container.innerHTML = events.length
+    ? events
+        .slice(0, 12)
+        .map(
+          (event) => `
+            <div class="support-timeline-item">
+              <div class="support-timeline-dot"></div>
+              <div class="support-timeline-content">
+                <div class="support-timeline-title">${escapeHtml(event.title)}</div>
+                <div class="support-timeline-meta">${formatTimelineDate(event.created_at)} · ${escapeHtml(event.actor_email || "Sistema")}</div>
+                ${event.details ? `<div class="support-timeline-details">${escapeHtml(event.details)}</div>` : ""}
+              </div>
+            </div>`
+        )
+        .join("")
+    : `<div class="empty-state">Ainda não há histórico de suporte para esta loja.</div>`;
+}
+
+function formatTimelineDate(value) {
+  if (!value) return "agora";
+  return new Date(value).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+async function createSupportEvent({ businessId, eventType, title, details }) {
+  if (!state.isPlatformAdmin || !businessId) return;
+  const client = getSupabaseClient();
+  const payload = {
+    business_id: businessId,
+    actor_user_id: state.user?.id || null,
+    actor_email: state.user?.email || "suporte@agendafacil",
+    event_type: eventType,
+    title,
+    details,
+  };
+  const { error } = await client.from("support_events").insert(payload);
+  if (error) {
+    console.warn("Could not persist support event:", error.message);
+  }
 }
 
 function getTopServiceName() {

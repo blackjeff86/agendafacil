@@ -389,6 +389,11 @@
             <h3>Lojas da plataforma</h3>
             <p id="supportResultsLabel">0 resultados encontrados</p>
           </div>
+          <div class="support-pagination">
+            <button class="btn btn-link btn-sm" id="supportPrevPageButton" type="button" onclick="prevSupportPage()">Anterior</button>
+            <span id="supportPageLabel">Página 1 de 1</span>
+            <button class="btn btn-link btn-sm" id="supportNextPageButton" type="button" onclick="nextSupportPage()">Próxima</button>
+          </div>
         </div>
 
         <div id="supportBusinessList"></div>
@@ -631,29 +636,75 @@
   </div>
 
   <div class="modal-overlay" id="modalSupportBusiness">
-    <div class="modal-sheet">
-      <div class="modal-handle"></div>
-      <div class="font-bold text-lg mb-3" id="supportBusinessTitle">Gestão da loja</div>
-      <div class="input-group"><label for="supportBusinessName">Nome do negócio</label><input type="text" id="supportBusinessName" /></div>
-      <div class="input-group"><label for="supportBusinessOwnerEmail">E-mail de contato</label><input type="email" id="supportBusinessOwnerEmail" /></div>
-      <div class="input-group"><label for="supportBusinessWhatsapp">WhatsApp</label><input type="tel" id="supportBusinessWhatsapp" inputmode="numeric" maxlength="15" data-br-phone="true" /></div>
-      <div class="input-group"><label for="supportBusinessPlan">Plano</label><input type="text" id="supportBusinessPlan" /></div>
-      <div class="input-group"><label for="supportBusinessBilling">Status de cobrança</label>
-        <select id="supportBusinessBilling">
-          <option value="active">Ativo</option>
-          <option value="past_due">Atrasado</option>
-          <option value="blocked">Bloqueado</option>
-          <option value="canceled">Cancelado</option>
-          <option value="trial">Trial</option>
-        </select>
+    <div class="modal-sheet support-drawer-sheet">
+      <div class="support-drawer-head">
+        <div>
+          <div class="text-sm text-sub" id="supportBusinessTitle">Gestão da loja</div>
+          <div class="support-drawer-name" id="supportBusinessHeaderName">Loja</div>
+          <div class="support-drawer-meta" id="supportBusinessHeaderMeta">Categoria · /?slug=slug</div>
+        </div>
+        <div class="support-drawer-actions">
+          <span class="badge badge-success" id="supportBusinessHeaderStatus">Conta ativa</span>
+          <button class="btn btn-link btn-sm" type="button" onclick="closeModal('modalSupportBusiness')">Fechar</button>
+        </div>
       </div>
-      <div class="input-group"><label for="supportBusinessBlockedReason">Motivo do bloqueio</label><textarea id="supportBusinessBlockedReason" placeholder="Ex: inadimplência"></textarea></div>
-      <div class="input-group"><label for="supportBusinessNotes">Notas de suporte</label><textarea id="supportBusinessNotes" placeholder="Anotações internas para suporte"></textarea></div>
-      <button class="btn btn-brand" type="button" onclick="saveSupportBusiness()">Salvar dados da loja</button>
-      <button class="btn btn-warning mt-2" type="button" onclick="sendSupportPasswordReset()">Enviar redefinição de senha</button>
-      <button class="btn btn-ghost mt-2" type="button" onclick="supportCreateService()">Criar serviço para a loja</button>
-      <button class="btn btn-ghost mt-2" type="button" onclick="supportCreateProfessional()">Criar profissional para a loja</button>
-      <button class="btn btn-ghost mt-2" type="button" onclick="closeModal('modalSupportBusiness')">Fechar</button>
+
+      <div class="support-drawer-grid">
+        <div class="support-drawer-main">
+          <div class="support-mini-stats">
+            <div class="support-mini-stat">
+              <span>MRR</span>
+              <strong id="supportBusinessMiniMrr">R$ 49,90</strong>
+            </div>
+            <div class="support-mini-stat">
+              <span>Desde</span>
+              <strong id="supportBusinessMiniCreated">mai/2026</strong>
+            </div>
+            <div class="support-mini-stat">
+              <span>E-mail</span>
+              <strong id="supportBusinessMiniEmail">Sem e-mail</strong>
+            </div>
+            <div class="support-mini-stat">
+              <span>Cobrança</span>
+              <strong id="supportBusinessMiniBilling">Em dia</strong>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:0;">
+            <div class="input-group"><label for="supportBusinessName">Nome do negócio</label><input type="text" id="supportBusinessName" /></div>
+            <div class="input-group"><label for="supportBusinessOwnerEmail">E-mail de contato</label><input type="email" id="supportBusinessOwnerEmail" /></div>
+            <div class="input-group"><label for="supportBusinessWhatsapp">WhatsApp</label><input type="tel" id="supportBusinessWhatsapp" inputmode="numeric" maxlength="15" data-br-phone="true" /></div>
+            <div class="input-group"><label for="supportBusinessPlan">Plano</label><input type="text" id="supportBusinessPlan" /></div>
+            <div class="input-group"><label for="supportBusinessBilling">Status de cobrança</label>
+              <select id="supportBusinessBilling">
+                <option value="active">Ativo</option>
+                <option value="past_due">Atrasado</option>
+                <option value="blocked">Bloqueado</option>
+                <option value="canceled">Cancelado</option>
+                <option value="trial">Trial</option>
+              </select>
+            </div>
+            <div class="input-group"><label for="supportBusinessBlockedReason">Motivo do bloqueio</label><textarea id="supportBusinessBlockedReason" placeholder="Ex: inadimplência"></textarea></div>
+            <div class="input-group"><label for="supportBusinessNotes">Notas de suporte</label><textarea id="supportBusinessNotes" placeholder="Anotações internas para suporte"></textarea></div>
+            <button class="btn btn-brand" type="button" onclick="saveSupportBusiness()">Salvar dados da loja</button>
+            <button class="btn btn-warning mt-2" type="button" onclick="sendSupportPasswordReset()">Enviar redefinição de senha</button>
+            <button class="btn btn-ghost mt-2" type="button" onclick="supportCreateService()">Criar serviço para a loja</button>
+            <button class="btn btn-ghost mt-2" type="button" onclick="supportCreateProfessional()">Criar profissional para a loja</button>
+          </div>
+        </div>
+
+        <div class="support-drawer-side">
+          <div class="support-timeline-card">
+            <div class="support-timeline-head">
+              <div>
+                <div class="font-bold text-lg">Histórico de suporte</div>
+                <div class="text-sm text-sub">Ações recentes nessa loja</div>
+              </div>
+            </div>
+            <div id="supportTimelineList"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
