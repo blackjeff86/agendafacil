@@ -182,7 +182,6 @@ alter table public.professional_services enable row level security;
 alter table public.business_hours   enable row level security;
 alter table public.appointments     enable row level security;
 
-drop function if exists public.is_platform_admin();
 create or replace function public.is_platform_admin()
 returns boolean
 language sql
