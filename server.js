@@ -2,6 +2,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
+/** Servidor estático simples. Para desenvolvimento com hot reload use: npm run dev (Vite). Para produção local após build: sirva a pasta dist/ (ex.: npx serve dist). */
 const PORT = 8000;
 const ROOT = __dirname;
 

@@ -1,0 +1,19 @@
+{
+  "name": "agendafacil",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1"
+  },
+  "devDependencies": {
+    "@vercel/node": "^3.2.23",
+    "typescript": "~5.7.2",
+    "vite": "^6.2.0"
+  }
+}

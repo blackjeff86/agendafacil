@@ -1,0 +1,92 @@
+import { openModal as openModalOverlay } from "../ui/dom";
+import * as appointment from "./appointmentActions";
+import * as auth from "./authActions";
+import { switchAuthMode } from "./authUi";
+import * as merchant from "./merchantActions";
+import { filterAppt, navTo } from "./navigation";
+import { confirmPlanUpgradeToPro, openPlanUpgradeModal } from "./planActions";
+import * as pub from "./publicFlow";
+import { toggleRecurrenceFields } from "./publicData";
+import { renderSupportBusinesses } from "../ui/render/supportPanel";
+import * as support from "./supportUiActions";
+
+export function registerWindowActions(): void {
+  const w = window as unknown as Record<string, unknown>;
+  Object.assign(w, {
+    switchAuthMode,
+    openAppEntry: auth.openAppEntry,
+    showPublicBooking: pub.showPublicBooking,
+    completeInitialSetup: auth.completeInitialSetup,
+    logout: auth.logout,
+    navTo,
+    filterAppt,
+    openApptDetail: appointment.openApptDetail,
+    updateAppointmentStatus: appointment.updateAppointmentStatus,
+    saveAppointment: merchant.saveAppointment,
+    openAppointmentModal: appointment.openAppointmentModal,
+    closeAppointmentModal: appointment.closeAppointmentModal,
+    editAppointmentFromDetail: appointment.editAppointmentFromDetail,
+    deleteAppointment: appointment.deleteAppointment,
+    confirmDeleteAppointment: appointment.confirmDeleteAppointment,
+    openSeriesEditModal: appointment.openSeriesEditModal,
+    saveSeriesEdit: appointment.saveSeriesEdit,
+    deleteCurrentSeries: appointment.deleteCurrentSeries,
+    saveService: merchant.saveService,
+    saveProfessional: merchant.saveProfessional,
+    openServiceModal: merchant.openServiceModal,
+    closeServiceModal: merchant.closeServiceModal,
+    editService: merchant.editService,
+    toggleServiceActive: merchant.toggleServiceActive,
+    openProfessionalModal: merchant.openProfessionalModal,
+    closeProfessionalModal: merchant.closeProfessionalModal,
+    editProfessional: merchant.editProfessional,
+    toggleProfessionalActive: merchant.toggleProfessionalActive,
+    pubBack: pub.pubBack,
+    pubGoStep: pub.pubGoStep,
+    startBooking: pub.startBooking,
+    goNextFromService: pub.goNextFromService,
+    goNextFromProf: pub.goNextFromProf,
+    selectService: pub.selectService,
+    selectProf: pub.selectProf,
+    selectDate: pub.selectDate,
+    selectTime: pub.selectTime,
+    confirmBooking: pub.confirmBooking,
+    sendWAConfirmation: pub.sendWAConfirmation,
+    copyWAMsg: pub.copyWAMsg,
+    copyLink: pub.copyLink,
+    shareWhatsApp: pub.shareWhatsApp,
+    openBusinessWhatsApp: pub.openBusinessWhatsApp,
+    openBusinessInstagram: pub.openBusinessInstagram,
+    openHostedPublicPage: pub.openHostedPublicPage,
+    toggleRecurrenceFields,
+    handleBusinessLogoUpload: merchant.handleBusinessLogoUpload,
+    handleBusinessCoverUpload: merchant.handleBusinessCoverUpload,
+    toggleCardMenu: merchant.toggleCardMenu,
+    closeConfirmActionModal: appointment.closeConfirmActionModal,
+    renderSupportBusinesses,
+    openSupportBusinessModal: support.openSupportBusinessModal,
+    saveSupportBusiness: support.saveSupportBusiness,
+    sendSupportPasswordReset: support.sendSupportPasswordReset,
+    toggleBusinessBlocked: support.toggleBusinessBlocked,
+    supportCreateService: support.supportCreateService,
+    supportCreateProfessional: support.supportCreateProfessional,
+    prevSupportPage: support.prevSupportPage,
+    nextSupportPage: support.nextSupportPage,
+    switchSupportTab: support.switchSupportTab,
+    syncSupportPlanNameFromTier: support.syncSupportPlanNameFromTier,
+    toggleSupportPaymentCheckbox: support.toggleSupportPaymentCheckbox,
+    supportBatchRenewalWhatsapp: support.supportBatchRenewalWhatsapp,
+    openRenewalReminderWhatsApp: support.openRenewalReminderWhatsApp,
+    setSupportFilter: support.setSupportFilter,
+    openSupportPublicLink: support.openSupportPublicLink,
+    openModal: openModalOverlay,
+    closeModal: appointment.closeModal,
+    toggleHourInputs: merchant.toggleHourInputs,
+    doLogin: auth.doLogin,
+    doSignup: auth.doSignup,
+    openPlanUpgradeModal,
+    confirmPlanUpgradeToPro,
+    saveBusinessProfile: merchant.saveBusinessProfile,
+    runPendingConfirmAction: appointment.runPendingConfirmAction,
+  });
+}

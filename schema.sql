@@ -40,7 +40,21 @@ alter table public.businesses add column if not exists blocked_reason text;
 alter table public.businesses drop constraint if exists businesses_billing_status_check;
 alter table public.businesses
   add constraint businesses_billing_status_check
-  check (billing_status in ('active','past_due','blocked','canceled','trial'));
+  check (billing_status in ('active','past_due','blocked','canceled','trial','pendente'));
+
+alter table public.businesses add column if not exists plan_tier text;
+alter table public.businesses add column if not exists trial_ends_at timestamptz;
+
+alter table public.businesses drop constraint if exists businesses_plan_tier_check;
+alter table public.businesses
+  add constraint businesses_plan_tier_check
+  check (plan_tier is null or plan_tier in ('starter','pro'));
+
+comment on column public.businesses.plan_tier is 'starter | pro. NULL = legado (app trata como Pro).';
+comment on column public.businesses.trial_ends_at is 'Fim do trial (ex.: 7 dias após cadastro), com billing_status trial.';
+
+alter table public.businesses add column if not exists next_billing_at timestamptz;
+comment on column public.businesses.next_billing_at is 'Próxima renovação mensal (PIX); trial usa trial_ends_at até migrar para active.';
 
 create table if not exists public.platform_admins (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -165,6 +179,13 @@ alter table public.appointments add column if not exists customer_id uuid refere
 alter table public.appointments add column if not exists series_id uuid references public.appointment_series(id) on delete set null;
 alter table public.appointments add column if not exists client_email text;
 alter table public.appointments add column if not exists occurrence_index int not null default 1;
+
+alter table public.appointments add column if not exists reminder_sent_at timestamptz;
+comment on column public.appointments.reminder_sent_at is 'Preenchido pelo job diário ao enviar lembrete D-1 ao cliente (WhatsApp).';
+
+create index if not exists idx_appointments_reminder_day
+  on public.appointments (appointment_date)
+  where reminder_sent_at is null and status = 'confirmado';
 
 -- ============================================================
 -- ROW LEVEL SECURITY (RLS)
@@ -901,3 +922,16 @@ execute function public.validate_appointment_integrity();
 -- DADOS DE EXEMPLO (opcional — remova se não quiser seed)
 -- ============================================================
 -- Os dados de exemplo são inseridos pelo app após o primeiro cadastro
+
+-- ============================================================
+-- Migração manual: promover loja existente ao Pro R$ 59,90
+-- (ajuste slug ou nome conforme sua base)
+-- ============================================================
+-- update public.businesses
+-- set plan_tier = 'pro', plan_name = 'Plano Pro'
+-- where slug = 'seu-slug-aqui';
+--
+-- ou, por nome aproximado:
+-- update public.businesses
+-- set plan_tier = 'pro', plan_name = 'Plano Pro'
+-- where name ilike '%deh%unhas%';

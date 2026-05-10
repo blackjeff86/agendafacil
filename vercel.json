@@ -1,0 +1,11 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "crons": [
+    {
+      "path": "/api/cron/appointment-reminders",
+      "schedule": "0 13 * * *"
+    }
+  ],
+  "rewrites": [{ "source": "/((?!assets/)(?!api/).*)", "destination": "/index.html" }]
+}

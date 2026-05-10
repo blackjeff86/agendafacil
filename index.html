@@ -3,9 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>AgendaFácil - Sistema de Agendamento</title>
-  <link rel="stylesheet" href="assets/css/styles.css" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <title>AgendaFácil — Agendamento online para salões e barbearias</title>
 </head>
 <body>
   <div class="toast" id="toast"></div>
@@ -14,13 +12,13 @@
     <div class="landing-shell">
       <div class="landing-hero">
         <div class="landing-badge">AgendaFácil</div>
-        <h1>Seu salão online em poucos minutos</h1>
+        <h1>Organize seus agendamentos pelo celular e receba clientes pelo WhatsApp</h1>
         <p>
-          Com o Agenda Fácil, seus clientes agendam pelo celular, você organiza sua agenda
-          e compartilha tudo pelo WhatsApp.
+          O Agenda Fácil é o link oficial do seu salão: serviço, profissional e horário escolhidos pelo cliente,
+          com confirmação clara — menos mensagens perdidas e agenda no controle.
         </p>
         <div class="landing-cta">
-          <button class="btn btn-brand" type="button" onclick="openAppEntry('signup')">Começar grátis</button>
+          <button class="btn btn-brand" type="button" onclick="openAppEntry('signup')">Começar 7 dias grátis</button>
           <a class="btn btn-ghost landing-link-btn" href="#landingPricing">Ver planos</a>
         </div>
         <div class="landing-proof-strip">
@@ -256,7 +254,7 @@
         <div class="logo-big">✂️</div>
         <div class="brand-name">AgendaFácil</div>
         <div class="brand-sub">Acesse sua conta ou cadastre o seu salão</div>
-        <div class="connection-badge">Supabase conectado</div>
+        <div class="connection-badge">Conexão segura · seus dados protegidos</div>
 
         <div class="auth-tabs">
           <button class="auth-tab active" id="tabLogin" type="button" onclick="switchAuthMode('login')">Entrar</button>
@@ -362,6 +360,7 @@
   </section>
 
   <div id="adminShell" class="hidden">
+    <div id="planStatusStrip" class="plan-status-strip hidden" aria-live="polite"></div>
     <div id="pageDashboard" class="page">
       <div class="top-bar">
         <div>
@@ -414,7 +413,10 @@
         <h2>Profissionais</h2>
         <button class="btn btn-sm btn-brand" style="width:auto" type="button" onclick="openProfessionalModal()">+ Novo</button>
       </div>
-      <div class="scroll-area p-4" id="profissionaisList"></div>
+      <div class="scroll-area p-4">
+        <div id="profissionaisPlanHint" class="hidden"></div>
+        <div id="profissionaisList"></div>
+      </div>
     </div>
 
     <div id="pageClientes" class="page">
@@ -423,6 +425,19 @@
       </div>
       <div class="scroll-area p-4">
         <div id="clientesList"></div>
+      </div>
+    </div>
+
+    <div id="pageRelatorios" class="page">
+      <div class="top-bar"><h2>Relatórios</h2></div>
+      <div class="scroll-area p-4">
+        <p class="text-sm text-sub mb-3">Resumo do mês corrente (Plano Pro).</p>
+        <div class="stat-grid" style="margin-bottom:16px;">
+          <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-val" id="reportsApptCount">0</div><div class="stat-label">Agendamentos no mês</div></div>
+          <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-val" id="reportsRevenue">R$0</div><div class="stat-label">Receita prevista</div></div>
+        </div>
+        <div class="section-title">Período · <span id="reportsMonthLabel"></span></div>
+        <p class="text-sm text-sub mt-2">Em breve: exportação e comparativos entre meses.</p>
       </div>
     </div>
 
@@ -494,9 +509,13 @@
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
         Equipe
       </button>
-      <button class="nav-item" data-page="pageClientes" type="button" onclick="navTo('pageClientes')">
+      <button class="nav-item hidden" id="navClientesItem" data-page="pageClientes" type="button" onclick="navTo('pageClientes')">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path stroke-linecap="round" stroke-linejoin="round" d="M23 21v-2a4 4 0 00-3-3.87"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 3.13a4 4 0 010 7.75"/></svg>
         Clientes
+      </button>
+      <button class="nav-item hidden" id="navRelatoriosItem" data-page="pageRelatorios" type="button" onclick="navTo('pageRelatorios')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        Relatórios
       </button>
       <button class="nav-item" data-page="pageMeuNegocio" type="button" onclick="navTo('pageMeuNegocio')">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -530,11 +549,17 @@
             <p>Monitore a base ativa, localize clientes com rapidez e aja sem depender do painel do lojista.</p>
           </div>
           <div class="support-hero-side">
-            <div class="support-hero-pill">Plano padrão: R$ 49,90/mês</div>
+            <div class="support-hero-pill">Cobrança via PIX · Starter R$ 39,90 · Pro R$ 59,90</div>
             <div class="support-hero-pill support-hero-pill-soft">Ambiente interno</div>
           </div>
         </div>
 
+        <div class="support-tabs" role="tablist">
+          <button type="button" class="support-tab is-active" id="supportTabLojasBtn" role="tab" aria-selected="true" onclick="switchSupportTab('lojas')">Lojas</button>
+          <button type="button" class="support-tab" id="supportTabRenovacoesBtn" role="tab" aria-selected="false" onclick="switchSupportTab('renovacoes')">Renovações PIX</button>
+        </div>
+
+        <div id="supportPanelLojas">
         <div class="support-toolbar">
           <div class="card">
             <div class="input-group" style="margin-bottom:0;">
@@ -586,6 +611,19 @@
         </div>
 
         <div id="supportBusinessList"></div>
+        </div>
+
+        <div id="supportPanelRenovacoes" class="hidden">
+          <div class="card support-renewal-intro">
+            <div class="font-semibold mb-2">Lojas com vencimento próximo (PIX)</div>
+            <p class="text-sm text-sub">Listamos contas <strong>ativas</strong> cujo trial ou próxima mensalidade vence em até <strong id="supportRenewalWindowDays">7</strong> dias, ou já está atrasado nessa janela.</p>
+            <p class="text-sm text-sub mt-2">Chave PIX da plataforma (mensagem automática): <strong id="supportPixKeyDisplay" class="support-pix-inline">—</strong></p>
+            <p class="text-xs text-sub mt-2">Defina <code class="text-xs">VITE_AGENDAFACIL_PIX_KEY</code> no deploy. Opcional: <code class="text-xs">VITE_RENEWAL_REMINDER_WINDOW_DAYS</code>.</p>
+            <p class="text-sm text-sub mt-3">Envio em massa (sem abrir várias abas) exige backend com a API do WhatsApp — veja <code class="text-xs">VITE_WHATSAPP_EDGE_URL</code> no <code class="text-xs">.env.example</code>.</p>
+            <button class="btn btn-outline btn-sm mt-2" type="button" onclick="supportBatchRenewalWhatsapp()">Enviar lembretes PIX (todos da lista via API)</button>
+          </div>
+          <div id="supportRenewalList"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -603,13 +641,13 @@
         </div>
       </div>
       <div class="p-4" style="flex:1;">
-        <div class="card text-center" style="padding:20px;">
-          <div style="font-size:32px;margin-bottom:8px;">👇</div>
-          <div class="font-bold text-lg mb-1">Como deseja agendar?</div>
-          <div class="text-sm text-sub mb-4">Escolha o melhor fluxo para o seu cliente.</div>
-          <div class="flex gap-3">
-            <button class="btn btn-brand flex-1" type="button" onclick="startBooking('service')">✂️ Por Serviço</button>
-            <button class="btn btn-outline flex-1" type="button" onclick="startBooking('prof')">👤 Por Profissional</button>
+        <div class="card text-center pub-choice-card">
+          <div class="pub-choice-icon" aria-hidden="true">✨</div>
+          <div class="font-bold text-lg mb-1">Comece por aqui</div>
+          <div class="text-sm text-sub mb-4">Dois jeitos rápidos — escolha o que fizer mais sentido.</div>
+          <div class="flex gap-3 pub-choice-btns">
+            <button class="btn btn-brand flex-1" type="button" onclick="startBooking('service')">Por serviço</button>
+            <button class="btn btn-outline flex-1" type="button" onclick="startBooking('prof')">Por profissional</button>
           </div>
         </div>
         <div class="section-title mt-3">Nossos serviços</div>
@@ -844,6 +882,16 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="modalPlanUpgrade">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="font-bold text-lg mb-2">Upgrade para Plano Pro</div>
+      <p class="text-sm text-sub mb-4">Você terá múltiplos profissionais ativos, gestão de clientes, relatórios e demais recursos Pro. A cobrança integrada pode ser ativada depois; por enquanto confirmamos só a mudança de plano no sistema.</p>
+      <button class="btn btn-brand" type="button" onclick="confirmPlanUpgradeToPro()">Confirmar Plano Pro</button>
+      <button class="btn btn-ghost mt-2" type="button" onclick="closeModal('modalPlanUpgrade')">Cancelar</button>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="modalSupportBusiness">
     <div class="modal-sheet support-drawer-sheet">
       <div class="support-drawer-head">
@@ -862,7 +910,7 @@
         <div class="support-drawer-main">
           <div class="support-mini-stats">
             <div class="support-mini-stat">
-              <span>MRR</span>
+              <span>Valor mensal</span>
               <strong id="supportBusinessMiniMrr">R$ 49,90</strong>
             </div>
             <div class="support-mini-stat">
@@ -879,19 +927,42 @@
             </div>
           </div>
 
+          <div class="card support-readonly-card" style="margin-bottom:12px;">
+            <div class="font-semibold text-sm mb-2">Plano e período (visão rápida)</div>
+            <div class="text-sm"><span class="text-sub">Plano · preço:</span> <span id="supportBusinessReadPlan">—</span></div>
+            <div class="text-sm mt-1"><span class="text-sub">Trial:</span> <span id="supportBusinessReadTrial">—</span></div>
+            <div class="text-sm mt-1"><span class="text-sub">Próximo vencimento:</span> <span id="supportBusinessReadDue">—</span></div>
+          </div>
+
           <div class="card" style="margin-bottom:0;">
             <div class="input-group"><label for="supportBusinessName">Nome do negócio</label><input type="text" id="supportBusinessName" /></div>
             <div class="input-group"><label for="supportBusinessOwnerEmail">E-mail de contato</label><input type="email" id="supportBusinessOwnerEmail" /></div>
             <div class="input-group"><label for="supportBusinessWhatsapp">WhatsApp</label><input type="tel" id="supportBusinessWhatsapp" inputmode="numeric" maxlength="15" data-br-phone="true" /></div>
-            <div class="input-group"><label for="supportBusinessPlan">Plano</label><input type="text" id="supportBusinessPlan" /></div>
+            <div class="input-group"><label for="supportBusinessPlanTier">Nível do plano (Starter / Pro)</label>
+              <select id="supportBusinessPlanTier" onchange="syncSupportPlanNameFromTier()">
+                <option value="legado">Legado (Pro — preço R$ 49,90)</option>
+                <option value="starter">Starter (R$ 39,90)</option>
+                <option value="pro">Pro (R$ 59,90)</option>
+              </select>
+            </div>
+            <div class="input-group"><label for="supportBusinessTrialEnds">Fim do trial (data)</label><input type="date" id="supportBusinessTrialEnds" /></div>
+            <div class="input-group"><label for="supportBusinessNextBilling">Próxima renovação mensal (PIX)</label><input type="date" id="supportBusinessNextBilling" /></div>
+            <div class="input-group"><label for="supportBusinessPlan">Nome exibido do plano</label><input type="text" id="supportBusinessPlan" placeholder="Ex.: Plano Pro" /></div>
             <div class="input-group"><label for="supportBusinessBilling">Status de cobrança</label>
-              <select id="supportBusinessBilling">
+              <select id="supportBusinessBilling" onchange="toggleSupportPaymentCheckbox()">
                 <option value="active">Ativo</option>
+                <option value="pendente">Pendente (pagamento / aguardando confirmação)</option>
                 <option value="past_due">Atrasado</option>
                 <option value="blocked">Bloqueado</option>
                 <option value="canceled">Cancelado</option>
                 <option value="trial">Trial</option>
               </select>
+            </div>
+            <div class="input-group">
+              <label class="flex items-center gap-2" style="cursor:pointer;font-weight:500;">
+                <input type="checkbox" id="supportPaymentReceived" />
+                <span class="text-sm">Pagamento PIX recebido hoje — marcar cobrança como <strong>Ativo</strong> e agendar próxima renovação em +30 dias (substitui a data de “Próxima renovação” acima).</span>
+              </label>
             </div>
             <div class="input-group"><label for="supportBusinessBlockedReason">Motivo do bloqueio</label><textarea id="supportBusinessBlockedReason" placeholder="Ex: inadimplência"></textarea></div>
             <div class="input-group"><label for="supportBusinessNotes">Notas de suporte</label><textarea id="supportBusinessNotes" placeholder="Anotações internas para suporte"></textarea></div>
@@ -949,6 +1020,6 @@
     </div>
   </div>
 
-  <script src="assets/js/app.js"></script>
+  <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
