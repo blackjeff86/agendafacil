@@ -11,57 +11,233 @@
   <div class="toast" id="toast"></div>
 
   <section id="landingPage" class="hidden landing-page">
-    <div class="landing-hero">
-      <div class="landing-badge">AgendaFácil</div>
-      <h1>Agendamento online profissional para salões, barbearias e estética.</h1>
-      <p>
-        Organize sua agenda, equipe, serviços e horários em minutos. Seus clientes escolhem o serviço,
-        encontram horários disponíveis e agendam sem conflito.
-      </p>
-      <div class="landing-cta">
-        <button class="btn btn-brand" type="button" onclick="openAppEntry('signup')">Quero cadastrar meu salão</button>
-        <button class="btn btn-ghost" type="button" onclick="openAppEntry('login')">Já sou cliente</button>
+    <div class="landing-shell">
+      <div class="landing-hero">
+        <div class="landing-badge">AgendaFácil</div>
+        <h1>Seu salão online em poucos minutos</h1>
+        <p>
+          Com o Agenda Fácil, seus clientes agendam pelo celular, você organiza sua agenda
+          e compartilha tudo pelo WhatsApp.
+        </p>
+        <div class="landing-cta">
+          <button class="btn btn-brand" type="button" onclick="openAppEntry('signup')">Começar grátis</button>
+          <a class="btn btn-ghost landing-link-btn" href="#landingPricing">Ver planos</a>
+        </div>
+        <div class="landing-proof-strip">
+          <span>7 dias grátis</span>
+          <span>Sem fidelidade</span>
+          <span>Cancele quando quiser</span>
+        </div>
       </div>
-      <div class="landing-price-card">
-        <div class="text-sm text-sub">Plano único</div>
-        <div class="landing-price">R$ 49,90<span>/mês</span></div>
-        <div class="text-sm text-sub">Plano profissional para a gestão do seu salão.</div>
+
+      <div class="landing-showcase">
+        <div class="landing-phone-card">
+          <div class="landing-phone-top">
+            <span class="landing-dot"></span>
+            <span class="landing-dot"></span>
+            <span class="landing-dot"></span>
+          </div>
+          <div class="landing-phone-screen">
+            <div class="landing-mini-chip">Link de agendamento</div>
+            <div class="landing-showcase-title">Barbearia Central</div>
+            <div class="landing-showcase-text">Clientes escolhem serviço, horário e confirmam sozinhos.</div>
+            <div class="landing-showcase-list">
+              <div class="landing-showcase-item">
+                <strong>Corte + barba</strong>
+                <span>Hoje às 14:00</span>
+              </div>
+              <div class="landing-showcase-item">
+                <strong>Sobrancelha</strong>
+                <span>Hoje às 15:30</span>
+              </div>
+              <div class="landing-showcase-item active">
+                <strong>WhatsApp enviado</strong>
+                <span>Link pronto para compartilhar</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="landing-floating-card landing-floating-card-main">
+          <div class="landing-floating-label">Agenda organizada</div>
+          <div class="landing-floating-value">Sem conflito de horários</div>
+        </div>
+        <div class="landing-floating-card landing-floating-card-wa">
+          <div class="landing-floating-label">WhatsApp</div>
+          <div class="landing-floating-value">Compartilhe o link em segundos</div>
+        </div>
       </div>
     </div>
 
     <div class="landing-section">
-      <h2>Por que o AgendaFácil?</h2>
+      <div class="landing-section-heading">
+        <span class="landing-section-kicker">Problemas do dia a dia</span>
+        <h2>Quando tudo fica no WhatsApp, a agenda vira um caos</h2>
+      </div>
       <div class="landing-grid">
         <div class="landing-card">
-          <div class="landing-icon">⚡</div>
-          <h3>Configuração rápida</h3>
-          <p>Cadastre negócio, equipe, serviços e horários sem depender de planilhas ou sistemas complexos.</p>
-        </div>
-        <div class="landing-card">
-          <div class="landing-icon">📅</div>
-          <h3>Agenda sem conflito</h3>
-          <p>O sistema valida horários e impede que dois clientes reservem o mesmo profissional ao mesmo tempo.</p>
+          <div class="landing-icon">⏰</div>
+          <h3>Clientes esquecem horários</h3>
+          <p>Sem um fluxo claro, a confirmação se perde e o atendimento fica vulnerável a faltas.</p>
         </div>
         <div class="landing-card">
           <div class="landing-icon">💬</div>
-          <h3>Link para clientes</h3>
-          <p>Envie seu link de agendamento e deixe o cliente escolher serviço, profissional e horário sozinho.</p>
+          <h3>Agenda bagunçada no WhatsApp</h3>
+          <p>Mensagens misturadas dificultam responder rápido e acompanhar quem realmente marcou.</p>
         </div>
         <div class="landing-card">
-          <div class="landing-icon">🛠️</div>
-          <h3>Gestão fácil</h3>
-          <p>Acompanhe agendamentos, edite equipe, ajuste horários e mantenha tudo organizado num só lugar.</p>
+          <div class="landing-icon">🚫</div>
+          <h3>Risco de horário duplicado</h3>
+          <p>Dois clientes no mesmo horário geram desgaste, atraso e uma experiência ruim para o salão.</p>
+        </div>
+        <div class="landing-card">
+          <div class="landing-icon">👥</div>
+          <h3>Falta de controle da equipe</h3>
+          <p>Sem visão dos profissionais e horários, fica difícil distribuir a agenda e vender melhor.</p>
+        </div>
+        <div class="landing-card">
+          <div class="landing-icon">📉</div>
+          <h3>Perda de vendas</h3>
+          <p>Quando o atendimento demora ou depende de ida e volta no chat, muitos clientes desistem.</p>
         </div>
       </div>
     </div>
 
     <div class="landing-section">
-      <h2>Como funciona</h2>
+      <div class="landing-section-heading">
+        <span class="landing-section-kicker">A solução</span>
+        <h2>O Agenda Fácil organiza o atendimento sem complicar sua rotina</h2>
+      </div>
+      <div class="landing-grid landing-grid-solution">
+        <div class="landing-feature-card">
+          <strong>Página pública de agendamento</strong>
+          <span>Seu cliente escolhe serviço e horário direto pelo celular.</span>
+        </div>
+        <div class="landing-feature-card">
+          <strong>Link compartilhável no WhatsApp</strong>
+          <span>Envie o link em segundos e reduza o vai e vem das mensagens.</span>
+        </div>
+        <div class="landing-feature-card">
+          <strong>Cadastro de serviços</strong>
+          <span>Mostre valores, duração e categorias de forma organizada.</span>
+        </div>
+        <div class="landing-feature-card">
+          <strong>Cadastro de profissionais</strong>
+          <span>Distribua melhor a agenda da equipe e evite conflitos.</span>
+        </div>
+        <div class="landing-feature-card">
+          <strong>Horários de funcionamento</strong>
+          <span>Defina dias e horários disponíveis com clareza.</span>
+        </div>
+        <div class="landing-feature-card">
+          <strong>Painel simples para o lojista</strong>
+          <span>Acompanhe agendamentos, clientes e rotina do salão em um só lugar.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="landing-section">
+      <div class="landing-section-heading">
+        <span class="landing-section-kicker">Como funciona</span>
+        <h2>Em poucos passos, seu salão já começa a receber agendamentos</h2>
+      </div>
       <div class="landing-steps">
-        <div class="landing-step"><strong>1.</strong> Cadastre seu salão e configure os serviços.</div>
-        <div class="landing-step"><strong>2.</strong> Adicione profissionais e defina os horários de atendimento.</div>
-        <div class="landing-step"><strong>3.</strong> Compartilhe seu link público com os clientes.</div>
-        <div class="landing-step"><strong>4.</strong> Receba agendamentos no painel com tudo salvo no sistema.</div>
+        <div class="landing-step">
+          <div class="landing-step-number">1</div>
+          <strong>Cadastre seu salão</strong>
+          <p>Crie sua conta e personalize o nome do negócio.</p>
+        </div>
+        <div class="landing-step">
+          <div class="landing-step-number">2</div>
+          <strong>Configure serviços, horários e profissionais</strong>
+          <p>Deixe sua agenda pronta para receber clientes sem confusão.</p>
+        </div>
+        <div class="landing-step">
+          <div class="landing-step-number">3</div>
+          <strong>Compartilhe o link com seus clientes</strong>
+          <p>Envie pelo WhatsApp, Instagram ou bio e comece a vender melhor.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="landing-section" id="landingPricing">
+      <div class="landing-section-heading">
+        <span class="landing-section-kicker">Planos e preços</span>
+        <h2>Escolha o plano ideal para organizar seu negócio</h2>
+      </div>
+      <div class="landing-pricing-grid">
+        <div class="landing-pricing-card">
+          <div class="landing-pricing-head">
+            <h3>Plano Starter</h3>
+            <div class="landing-pricing-price">R$39,90<span>/mês</span></div>
+            <p>Para quem quer sair do papel e organizar a agenda rapidamente.</p>
+          </div>
+          <ul class="landing-pricing-list">
+            <li>Agendamento online</li>
+            <li>Cadastro de serviços</li>
+            <li>Cadastro de profissionais</li>
+            <li>Página pública de agendamento</li>
+            <li>Link para WhatsApp</li>
+            <li>Painel básico</li>
+          </ul>
+          <div class="landing-pricing-foot">
+            <span>7 dias grátis</span>
+            <span>Sem fidelidade</span>
+          </div>
+          <button class="btn btn-ghost" type="button" onclick="openAppEntry('signup')">Começar grátis</button>
+        </div>
+
+        <div class="landing-pricing-card featured">
+          <div class="landing-pricing-badge">Mais recomendado</div>
+          <div class="landing-pricing-head">
+            <h3>Plano Pro</h3>
+            <div class="landing-pricing-price">R$59,90<span>/mês</span></div>
+            <p>Para salões e barbearias que querem crescer com mais controle e previsibilidade.</p>
+          </div>
+          <ul class="landing-pricing-list">
+            <li>Tudo do Starter</li>
+            <li>Múltiplos profissionais</li>
+            <li>Gestão de clientes</li>
+            <li>Relatórios</li>
+            <li>Confirmação de agendamento</li>
+            <li>Suporte prioritário</li>
+            <li>Preparado para lembretes automáticos</li>
+          </ul>
+          <div class="landing-pricing-foot">
+            <span>7 dias grátis</span>
+            <span>Cancele quando quiser</span>
+          </div>
+          <button class="btn btn-brand" type="button" onclick="openAppEntry('signup')">Testar por 7 dias</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="landing-section">
+      <div class="landing-section-heading">
+        <span class="landing-section-kicker">Prova social</span>
+        <h2>Quem atende pelo celular precisa de um sistema leve e prático</h2>
+      </div>
+      <div class="landing-testimonials">
+        <div class="landing-testimonial-card">
+          <p>“Antes eu me perdia nos horários pelo WhatsApp. Agora mando o link e o cliente agenda sozinho.”</p>
+          <strong>Rafael, dono de barbearia</strong>
+        </div>
+        <div class="landing-testimonial-card">
+          <p>“Minha rotina ficou muito mais organizada e eu consigo responder os clientes com mais rapidez.”</p>
+          <strong>Camila, nail designer</strong>
+        </div>
+        <div class="landing-testimonial-card">
+          <p>“O Agenda Fácil deixou meu salão mais profissional sem complicar o atendimento no dia a dia.”</p>
+          <strong>Patrícia, dona de salão</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="landing-section">
+      <div class="landing-final-cta">
+        <span class="landing-section-kicker">Comece hoje</span>
+        <h2>Comece hoje a organizar sua agenda e pare de perder clientes.</h2>
+        <p>Crie sua conta, configure seu salão e compartilhe seu link de agendamento pelo WhatsApp.</p>
+        <button class="btn btn-brand" type="button" onclick="openAppEntry('signup')">Testar grátis por 7 dias</button>
       </div>
     </div>
   </section>
