@@ -10,6 +10,62 @@
 <body>
   <div class="toast" id="toast"></div>
 
+  <section id="landingPage" class="hidden landing-page">
+    <div class="landing-hero">
+      <div class="landing-badge">AgendaFácil</div>
+      <h1>Agendamento online simples para salões, barbearias e estética.</h1>
+      <p>
+        Organize sua agenda, equipe, serviços e horários em minutos. Seus clientes escolhem o serviço,
+        encontram horários disponíveis e agendam sem conflito.
+      </p>
+      <div class="landing-cta">
+        <button class="btn btn-brand" type="button" onclick="openAppEntry('signup')">Quero cadastrar meu salão</button>
+        <button class="btn btn-ghost" type="button" onclick="openAppEntry('login')">Já sou cliente</button>
+      </div>
+      <div class="landing-price-card">
+        <div class="text-sm text-sub">Plano único</div>
+        <div class="landing-price">R$ 29,90<span>/mês</span></div>
+        <div class="text-sm text-sub">Sem complicação para começar.</div>
+      </div>
+    </div>
+
+    <div class="landing-section">
+      <h2>Por que o AgendaFácil?</h2>
+      <div class="landing-grid">
+        <div class="landing-card">
+          <div class="landing-icon">⚡</div>
+          <h3>Configuração rápida</h3>
+          <p>Cadastre negócio, equipe, serviços e horários sem depender de planilhas ou sistemas complexos.</p>
+        </div>
+        <div class="landing-card">
+          <div class="landing-icon">📅</div>
+          <h3>Agenda sem conflito</h3>
+          <p>O sistema valida horários e impede que dois clientes reservem o mesmo profissional ao mesmo tempo.</p>
+        </div>
+        <div class="landing-card">
+          <div class="landing-icon">💬</div>
+          <h3>Link para clientes</h3>
+          <p>Envie seu link de agendamento e deixe o cliente escolher serviço, profissional e horário sozinho.</p>
+        </div>
+        <div class="landing-card">
+          <div class="landing-icon">🛠️</div>
+          <h3>Gestão fácil</h3>
+          <p>Acompanhe agendamentos, edite equipe, ajuste horários e mantenha tudo organizado num só lugar.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="landing-section">
+      <h2>Como funciona</h2>
+      <div class="landing-steps">
+        <div class="landing-step"><strong>1.</strong> Cadastre seu salão e configure os serviços.</div>
+        <div class="landing-step"><strong>2.</strong> Adicione profissionais e defina os horários de atendimento.</div>
+        <div class="landing-step"><strong>3.</strong> Compartilhe seu link público com os clientes.</div>
+        <div class="landing-step"><strong>4.</strong> Receba agendamentos no painel com tudo salvo no sistema.</div>
+      </div>
+    </div>
+  </section>
+
   <div class="loading-overlay hidden" id="loadingOverlay">
     <div class="loading-card">
       <div class="spinner"></div>
@@ -74,6 +130,15 @@
 
       <div class="divider"></div>
       <button class="btn btn-ghost" id="btnPublicPreview" type="button" onclick="showPublicBooking()">Ver página pública</button>
+    </div>
+  </section>
+
+  <section id="blockedPage" class="hidden auth-shell">
+    <div class="login-card">
+      <div class="brand-name" style="font-size:22px;">Conta temporariamente bloqueada</div>
+      <div class="brand-sub" id="blockedReasonText">Entre em contato com o suporte para regularizar sua conta.</div>
+      <button class="btn btn-brand" type="button" onclick="window.open('https://wa.me/5511999990000','_blank')">Falar com suporte</button>
+      <button class="btn btn-ghost mt-2" type="button" onclick="logout()">Sair</button>
     </div>
   </section>
 
@@ -245,7 +310,28 @@
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path stroke-linecap="round" stroke-linejoin="round" d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
         Link
       </button>
+      <button class="nav-item hidden" id="supportNavItem" data-page="pageSupport" type="button" onclick="navTo('pageSupport')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636l-1.414 1.414M7.05 17.95l-1.414 1.414M5.636 5.636L7.05 7.05m9.9 9.9l1.414 1.414M12 8v4l3 3"/></svg>
+        Suporte
+      </button>
     </nav>
+
+    <div id="pageSupport" class="page">
+      <div class="top-bar"><h2>Gestão de Clientes</h2></div>
+      <div class="scroll-area p-4">
+        <div class="card">
+          <div class="input-group" style="margin-bottom:0;">
+            <label for="supportSearch">Buscar salão</label>
+            <input type="text" id="supportSearch" placeholder="Nome, slug ou e-mail" oninput="renderSupportBusinesses()" />
+          </div>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-icon">🏪</div><div class="stat-val" id="supportTotalBusinesses">0</div><div class="stat-label">Lojas cadastradas</div></div>
+          <div class="stat-card"><div class="stat-icon">🚫</div><div class="stat-val" id="supportBlockedBusinesses">0</div><div class="stat-label">Contas bloqueadas</div></div>
+        </div>
+        <div id="supportBusinessList"></div>
+      </div>
+    </div>
   </div>
 
   <div id="publicShell" class="hidden">
@@ -479,6 +565,33 @@
       <div style="background:#E2FFC7;border-radius:12px;padding:16px;font-size:14px;line-height:1.6;color:#1a1a1a;margin-bottom:16px;" id="waMessageText"></div>
       <button class="btn btn-wa" type="button" onclick="copyWAMsg()">Copiar mensagem</button>
       <button class="btn btn-ghost mt-2" type="button" onclick="closeModal('modalWAMsg')">Fechar</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalSupportBusiness">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="font-bold text-lg mb-3" id="supportBusinessTitle">Gestão da loja</div>
+      <div class="input-group"><label for="supportBusinessName">Nome do negócio</label><input type="text" id="supportBusinessName" /></div>
+      <div class="input-group"><label for="supportBusinessOwnerEmail">E-mail de contato</label><input type="email" id="supportBusinessOwnerEmail" /></div>
+      <div class="input-group"><label for="supportBusinessWhatsapp">WhatsApp</label><input type="tel" id="supportBusinessWhatsapp" inputmode="numeric" maxlength="15" data-br-phone="true" /></div>
+      <div class="input-group"><label for="supportBusinessPlan">Plano</label><input type="text" id="supportBusinessPlan" /></div>
+      <div class="input-group"><label for="supportBusinessBilling">Status de cobrança</label>
+        <select id="supportBusinessBilling">
+          <option value="active">Ativo</option>
+          <option value="past_due">Atrasado</option>
+          <option value="blocked">Bloqueado</option>
+          <option value="canceled">Cancelado</option>
+          <option value="trial">Trial</option>
+        </select>
+      </div>
+      <div class="input-group"><label for="supportBusinessBlockedReason">Motivo do bloqueio</label><textarea id="supportBusinessBlockedReason" placeholder="Ex: inadimplência"></textarea></div>
+      <div class="input-group"><label for="supportBusinessNotes">Notas de suporte</label><textarea id="supportBusinessNotes" placeholder="Anotações internas para suporte"></textarea></div>
+      <button class="btn btn-brand" type="button" onclick="saveSupportBusiness()">Salvar dados da loja</button>
+      <button class="btn btn-warning mt-2" type="button" onclick="sendSupportPasswordReset()">Enviar redefinição de senha</button>
+      <button class="btn btn-ghost mt-2" type="button" onclick="supportCreateService()">Criar serviço para a loja</button>
+      <button class="btn btn-ghost mt-2" type="button" onclick="supportCreateProfessional()">Criar profissional para a loja</button>
+      <button class="btn btn-ghost mt-2" type="button" onclick="closeModal('modalSupportBusiness')">Fechar</button>
     </div>
   </div>
 

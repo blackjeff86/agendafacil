@@ -126,6 +126,7 @@ const FALLBACK_PUBLIC = {
 const state = {
   session: null,
   user: null,
+  isPlatformAdmin: false,
   business: null,
   services: [],
   professionals: [],
@@ -138,6 +139,9 @@ const state = {
   editingServiceId: null,
   editingProfessionalId: null,
   pendingConfirmAction: null,
+  supportBusinesses: [],
+  supportSelectedBusinessId: null,
+  supportContextBusinessId: null,
   publicData: {
     business: null,
     services: [],
@@ -167,6 +171,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 function exposeActionsToWindow() {
   Object.assign(window, {
     switchAuthMode,
+    openAppEntry,
     showPublicBooking,
     completeInitialSetup,
     logout,
@@ -210,6 +215,13 @@ function exposeActionsToWindow() {
     handleBusinessCoverUpload,
     toggleCardMenu,
     closeConfirmActionModal,
+    renderSupportBusinesses,
+    openSupportBusinessModal,
+    saveSupportBusiness,
+    sendSupportPasswordReset,
+    toggleBusinessBlocked,
+    supportCreateService,
+    supportCreateProfessional,
     openModal,
     closeModal,
     toggleHourInputs,
@@ -283,7 +295,9 @@ async function bootstrapApp() {
   showLoading(true);
   try {
     const client = getSupabaseClient();
-    const slug = new URLSearchParams(window.location.search).get("slug");
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get("slug");
+    const appMode = params.get("app");
     const {
       data: { session },
       error,
@@ -313,27 +327,63 @@ async function bootstrapApp() {
       return;
     }
 
-    showScreen("loginPage");
+    if (appMode) {
+      showScreen("loginPage");
+      if (appMode === "signup") {
+        switchAuthMode("signup");
+      }
+    } else {
+      showScreen("landingPage");
+    }
   } catch (error) {
     console.error(error);
     showToast(getErrorMessage(error));
-    showScreen("loginPage");
+    showScreen("landingPage");
   } finally {
     showLoading(false);
   }
 }
 
 async function loadAdminExperience() {
+  await loadPlatformAdminStatus();
   await ensureBusinessExists();
 
-  if (!state.business) {
+  if (!state.business && !state.isPlatformAdmin) {
     showSetupPage();
+    return;
+  }
+
+  if (state.business && !state.business.active && !state.isPlatformAdmin) {
+    document.getElementById("blockedReasonText").textContent =
+      state.business.blocked_reason || "Sua conta está temporariamente bloqueada. Fale com o suporte para regularizar.";
+    showScreen("blockedPage");
     return;
   }
 
   showScreen("adminShell");
   await refreshAllBusinessData();
-  navTo("pageDashboard");
+  await loadSupportBusinesses();
+  document.getElementById("supportNavItem").classList.toggle("hidden", !state.isPlatformAdmin);
+  navTo(state.isPlatformAdmin ? "pageSupport" : "pageDashboard");
+}
+
+async function loadPlatformAdminStatus() {
+  if (!state.user) {
+    state.isPlatformAdmin = false;
+    return;
+  }
+  const client = getSupabaseClient();
+  const { data, error } = await client.rpc("is_platform_admin");
+  if (error) {
+    state.isPlatformAdmin = false;
+    return;
+  }
+  state.isPlatformAdmin = Boolean(data);
+}
+
+function openAppEntry(mode) {
+  const target = mode === "signup" ? `${APP_BASE_URL}/?app=signup` : `${APP_BASE_URL}/?app=login`;
+  window.location.href = target;
 }
 
 async function ensureBusinessExists() {
@@ -598,10 +648,170 @@ function populateModalOptions() {
   document.getElementById("newProfServices").innerHTML = serviceOptions;
 }
 
+async function populateProfessionalServicesForBusiness(businessId) {
+  const client = getSupabaseClient();
+  const { data, error } = await client.from("services").select("id,name").eq("business_id", businessId).order("created_at", { ascending: true });
+  if (error) throw error;
+  document.getElementById("newProfServices").innerHTML = (data ?? [])
+    .map((service) => `<option value="${service.id}">${service.name}</option>`)
+    .join("");
+}
+
 function updatePublicLink() {
   if (!state.business) return;
   const publicUrl = getPublicAppUrl(state.business.slug);
   document.getElementById("bizLink").textContent = publicUrl;
+}
+
+async function loadSupportBusinesses() {
+  if (!state.isPlatformAdmin) {
+    state.supportBusinesses = [];
+    return;
+  }
+  const client = getSupabaseClient();
+  const { data, error } = await client.from("businesses").select("*").order("created_at", { ascending: false });
+  if (error) throw error;
+  state.supportBusinesses = data ?? [];
+  renderSupportBusinesses();
+}
+
+function renderSupportBusinesses() {
+  if (!state.isPlatformAdmin) return;
+  const search = document.getElementById("supportSearch")?.value?.trim().toLowerCase() || "";
+  const filtered = state.supportBusinesses.filter((business) => {
+    const haystack = [business.name, business.slug, business.owner_email, business.whatsapp].join(" ").toLowerCase();
+    return haystack.includes(search);
+  });
+
+  document.getElementById("supportTotalBusinesses").textContent = String(state.supportBusinesses.length);
+  document.getElementById("supportBlockedBusinesses").textContent = String(state.supportBusinesses.filter((item) => !item.active).length);
+  document.getElementById("supportBusinessList").innerHTML = filtered.length
+    ? filtered
+        .map(
+          (business) => `
+            <div class="card ${business.active ? "" : "soft-inactive"}">
+              <div class="flex justify-between items-center gap-2">
+                <div>
+                  <div class="font-bold">${business.name}</div>
+                  <div class="text-sm text-sub">${business.owner_email || "Sem e-mail"} · /?slug=${business.slug}</div>
+                </div>
+                <span class="badge ${business.active ? "badge-success" : "badge-danger"}">${business.active ? "Ativa" : "Bloqueada"}</span>
+              </div>
+              <div class="text-sm text-sub mt-2">Plano: ${business.plan_name || "Plano Mensal 29,90"} · Cobrança: ${business.billing_status || "active"}</div>
+              <div class="card-actions" style="margin-top:12px;">
+                <button class="btn btn-link btn-sm" type="button" onclick="openSupportBusinessModal('${business.id}')">Gerenciar</button>
+                <button class="btn ${business.active ? "btn-warning" : "btn-success"} btn-sm" type="button" onclick="toggleBusinessBlocked('${business.id}')">${business.active ? "Bloquear" : "Desbloquear"}</button>
+                <button class="btn btn-ghost btn-sm" type="button" onclick="sendSupportPasswordReset('${business.id}')">Reset senha</button>
+              </div>
+            </div>`
+        )
+        .join("")
+    : renderEmptyState("Nenhuma loja encontrada.");
+}
+
+function openSupportBusinessModal(businessId) {
+  const business = state.supportBusinesses.find((item) => item.id === businessId);
+  if (!business) return;
+  state.supportSelectedBusinessId = businessId;
+  document.getElementById("supportBusinessTitle").textContent = `Gestão da loja · ${business.name}`;
+  document.getElementById("supportBusinessName").value = business.name || "";
+  document.getElementById("supportBusinessOwnerEmail").value = business.owner_email || "";
+  document.getElementById("supportBusinessWhatsapp").value = business.whatsapp || "";
+  document.getElementById("supportBusinessPlan").value = business.plan_name || "Plano Mensal 29,90";
+  document.getElementById("supportBusinessBilling").value = business.billing_status || "active";
+  document.getElementById("supportBusinessBlockedReason").value = business.blocked_reason || "";
+  document.getElementById("supportBusinessNotes").value = business.support_notes || "";
+  openModal("modalSupportBusiness");
+}
+
+async function saveSupportBusiness() {
+  if (!state.supportSelectedBusinessId) return;
+  const client = getSupabaseClient();
+  const billingStatus = document.getElementById("supportBusinessBilling").value;
+  const payload = {
+    name: document.getElementById("supportBusinessName").value.trim(),
+    owner_email: document.getElementById("supportBusinessOwnerEmail").value.trim(),
+    whatsapp: document.getElementById("supportBusinessWhatsapp").value.trim(),
+    plan_name: document.getElementById("supportBusinessPlan").value.trim() || "Plano Mensal 29,90",
+    billing_status: billingStatus,
+    blocked_reason: document.getElementById("supportBusinessBlockedReason").value.trim(),
+    support_notes: document.getElementById("supportBusinessNotes").value.trim(),
+    active: billingStatus !== "blocked",
+  };
+
+  showLoading(true);
+  try {
+    const { error } = await client.from("businesses").update(payload).eq("id", state.supportSelectedBusinessId);
+    if (error) throw error;
+    closeModal("modalSupportBusiness");
+    showToast("Dados de suporte salvos.");
+    await loadSupportBusinesses();
+  } catch (error) {
+    console.error(error);
+    showToast(getErrorMessage(error));
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function sendSupportPasswordReset(businessId = null) {
+  const targetBusiness = state.supportBusinesses.find((item) => item.id === (businessId || state.supportSelectedBusinessId));
+  if (!targetBusiness?.owner_email) {
+    showToast("Essa loja não possui e-mail de contato salvo.");
+    return;
+  }
+  const client = getSupabaseClient();
+  showLoading(true);
+  try {
+    const { error } = await client.auth.resetPasswordForEmail(targetBusiness.owner_email, {
+      redirectTo: `${APP_BASE_URL}/?app=login`,
+    });
+    if (error) throw error;
+    showToast("E-mail de redefinição enviado.");
+  } catch (error) {
+    console.error(error);
+    showToast(getErrorMessage(error));
+  } finally {
+    showLoading(false);
+  }
+}
+
+function toggleBusinessBlocked(businessId) {
+  const business = state.supportBusinesses.find((item) => item.id === businessId);
+  if (!business) return;
+  openConfirmActionModal({
+    title: business.active ? "Bloquear conta" : "Desbloquear conta",
+    message: business.active
+      ? `Deseja bloquear a conta de "${business.name}"?`
+      : `Deseja desbloquear a conta de "${business.name}"?`,
+    confirmLabel: business.active ? "Bloquear conta" : "Desbloquear conta",
+    confirmClass: business.active ? "btn btn-danger" : "btn btn-success",
+    onConfirm: async () => {
+      const client = getSupabaseClient();
+      const payload = business.active
+        ? { active: false, billing_status: "blocked", blocked_reason: business.blocked_reason || "Conta bloqueada pelo suporte." }
+        : { active: true, billing_status: "active", blocked_reason: null };
+      const { error } = await client.from("businesses").update(payload).eq("id", businessId);
+      if (error) throw error;
+      showToast(business.active ? "Conta bloqueada." : "Conta desbloqueada.");
+      await loadSupportBusinesses();
+    },
+  });
+}
+
+function supportCreateService() {
+  if (!state.supportSelectedBusinessId) return;
+  state.supportContextBusinessId = state.supportSelectedBusinessId;
+  resetServiceModal();
+  openServiceModal();
+}
+
+async function supportCreateProfessional() {
+  if (!state.supportSelectedBusinessId) return;
+  state.supportContextBusinessId = state.supportSelectedBusinessId;
+  await populateProfessionalServicesForBusiness(state.supportSelectedBusinessId);
+  resetProfessionalModal();
+  openProfessionalModal();
 }
 
 function navTo(pageId) {
@@ -795,6 +1005,7 @@ async function createBusinessWithSeed(draft) {
   const client = getSupabaseClient();
   const payload = {
     owner_id: state.user.id,
+    owner_email: draft.email || state.user.email || "",
     name: draft.name,
     slug: draft.slug,
     category: draft.category || "Salao de Beleza",
@@ -805,6 +1016,8 @@ async function createBusinessWithSeed(draft) {
     logo_emoji: draft.logo_emoji || "✂️",
     logo_image_url: draft.logo_image_url || "",
     cover_image_url: draft.cover_image_url || "",
+    plan_name: draft.plan_name || "Plano Mensal 29,90",
+    billing_status: draft.billing_status || "active",
     active: true,
   };
 
@@ -909,11 +1122,12 @@ async function saveBusinessProfile() {
 }
 
 async function saveService() {
-  if (!state.business) return;
+  if (!state.business && !state.supportContextBusinessId) return;
   const client = getSupabaseClient();
   const isEditing = Boolean(state.editingServiceId);
+  const targetBusinessId = state.supportContextBusinessId || state.business.id;
   const payload = {
-    business_id: state.business.id,
+    business_id: targetBusinessId,
     name: document.getElementById("newServiceName").value.trim(),
     description: document.getElementById("newServiceDescription").value.trim(),
     category: document.getElementById("newServiceCategory").value,
@@ -937,7 +1151,13 @@ async function saveService() {
     closeServiceModal();
     resetServiceModal();
     showToast(isEditing ? "Servico atualizado com sucesso." : "Servico salvo com sucesso.");
-    await refreshAllBusinessData();
+    state.supportContextBusinessId = null;
+    if (state.business) {
+      await refreshAllBusinessData();
+    }
+    if (state.isPlatformAdmin) {
+      await loadSupportBusinesses();
+    }
   } catch (error) {
     console.error(error);
     showToast(getErrorMessage(error));
@@ -947,13 +1167,14 @@ async function saveService() {
 }
 
 async function saveProfessional() {
-  if (!state.business) return;
+  if (!state.business && !state.supportContextBusinessId) return;
   const client = getSupabaseClient();
   const isEditing = Boolean(state.editingProfessionalId);
+  const targetBusinessId = state.supportContextBusinessId || state.business.id;
 
   const selectedServiceIds = Array.from(document.getElementById("newProfServices").selectedOptions).map((option) => option.value);
   const payload = {
-    business_id: state.business.id,
+    business_id: targetBusinessId,
     name: document.getElementById("newProfName").value.trim(),
     role: document.getElementById("newProfRole").value.trim(),
     emoji: document.getElementById("newProfEmoji").value.trim() || "👤",
@@ -990,7 +1211,13 @@ async function saveProfessional() {
     closeProfessionalModal();
     resetProfessionalModal();
     showToast(isEditing ? "Profissional atualizado com sucesso." : "Profissional salvo com sucesso.");
-    await refreshAllBusinessData();
+    state.supportContextBusinessId = null;
+    if (state.business) {
+      await refreshAllBusinessData();
+    }
+    if (state.isPlatformAdmin) {
+      await loadSupportBusinesses();
+    }
   } catch (error) {
     console.error(error);
     showToast(getErrorMessage(error));
@@ -1627,7 +1854,7 @@ function closeModal(id) {
 }
 
 function showScreen(id) {
-  ["loginPage", "setupPage", "adminShell", "publicShell"].forEach((screenId) => {
+  ["landingPage", "loginPage", "setupPage", "blockedPage", "adminShell", "publicShell"].forEach((screenId) => {
     document.getElementById(screenId).classList.toggle("hidden", screenId !== id);
   });
 }
@@ -1926,6 +2153,7 @@ function openServiceModal() {
 
 function closeServiceModal() {
   closeModal("modalNovoServico");
+  state.supportContextBusinessId = null;
   resetServiceModal();
 }
 
@@ -1971,6 +2199,7 @@ function openProfessionalModal() {
 
 function closeProfessionalModal() {
   closeModal("modalNovoProf");
+  state.supportContextBusinessId = null;
   resetProfessionalModal();
 }
 

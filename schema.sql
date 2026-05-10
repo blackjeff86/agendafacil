@@ -10,6 +10,7 @@ create extension if not exists "uuid-ossp";
 create table if not exists public.businesses (
   id          uuid primary key default uuid_generate_v4(),
   owner_id    uuid not null references auth.users(id) on delete cascade,
+  owner_email text,
   name        text not null,
   slug        text not null unique,
   category    text not null default 'Barbearia',
@@ -20,12 +21,33 @@ create table if not exists public.businesses (
   logo_emoji  text default '✂️',
   logo_image_url text,
   cover_image_url text,
+  plan_name   text default 'Plano Mensal 29,90',
+  billing_status text default 'active',
+  support_notes text,
+  blocked_reason text,
   active      boolean default true,
   created_at  timestamptz default now()
 );
 
+alter table public.businesses add column if not exists owner_email text;
 alter table public.businesses add column if not exists logo_image_url text;
 alter table public.businesses add column if not exists cover_image_url text;
+alter table public.businesses add column if not exists plan_name text default 'Plano Mensal 29,90';
+alter table public.businesses add column if not exists billing_status text default 'active';
+alter table public.businesses add column if not exists support_notes text;
+alter table public.businesses add column if not exists blocked_reason text;
+
+alter table public.businesses drop constraint if exists businesses_billing_status_check;
+alter table public.businesses
+  add constraint businesses_billing_status_check
+  check (billing_status in ('active','past_due','blocked','canceled','trial'));
+
+create table if not exists public.platform_admins (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  email text unique not null,
+  active boolean default true,
+  created_at timestamptz default now()
+);
 
 -- ── SERVICES ────────────────────────────────────────────────
 create table if not exists public.services (
@@ -92,12 +114,32 @@ create table if not exists public.appointments (
 -- ============================================================
 
 alter table public.businesses       enable row level security;
+alter table public.platform_admins  enable row level security;
 alter table public.services         enable row level security;
 alter table public.professionals    enable row level security;
 alter table public.professional_services enable row level security;
 alter table public.business_hours   enable row level security;
 alter table public.appointments     enable row level security;
 
+drop function if exists public.is_platform_admin();
+create or replace function public.is_platform_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.platform_admins
+    where user_id = auth.uid()
+      and active = true
+  );
+$$;
+
+grant execute on function public.is_platform_admin() to authenticated;
+
+drop policy if exists "platform_admin_self_select" on public.platform_admins;
 drop policy if exists "owner_select_business" on public.businesses;
 drop policy if exists "owner_insert_business" on public.businesses;
 drop policy if exists "owner_update_business" on public.businesses;
@@ -115,17 +157,20 @@ drop policy if exists "owner_manage_appointments" on public.appointments;
 drop policy if exists "public_insert_appointment" on public.appointments;
 
 -- ── BUSINESSES policies ──────────────────────────────────────
+create policy "platform_admin_self_select" on public.platform_admins
+  for select using (user_id = auth.uid());
+
 create policy "owner_select_business" on public.businesses
-  for select using (owner_id = auth.uid());
+  for select using (owner_id = auth.uid() or public.is_platform_admin());
 
 create policy "owner_insert_business" on public.businesses
-  for insert with check (owner_id = auth.uid());
+  for insert with check (owner_id = auth.uid() or public.is_platform_admin());
 
 create policy "owner_update_business" on public.businesses
-  for update using (owner_id = auth.uid());
+  for update using (owner_id = auth.uid() or public.is_platform_admin());
 
 create policy "owner_delete_business" on public.businesses
-  for delete using (owner_id = auth.uid());
+  for delete using (owner_id = auth.uid() or public.is_platform_admin());
 
 -- ── PUBLIC read for booking page (by slug) ───────────────────
 create policy "public_read_business_by_slug" on public.businesses
@@ -134,10 +179,10 @@ create policy "public_read_business_by_slug" on public.businesses
 -- ── SERVICES policies ────────────────────────────────────────
 create policy "owner_manage_services" on public.services
   for all using (
-    business_id in (select id from public.businesses where owner_id = auth.uid())
+    business_id in (select id from public.businesses where owner_id = auth.uid() or public.is_platform_admin())
   )
   with check (
-    business_id in (select id from public.businesses where owner_id = auth.uid())
+    business_id in (select id from public.businesses where owner_id = auth.uid() or public.is_platform_admin())
   );
 create policy "public_read_services" on public.services
   for select using (active = true);
@@ -145,10 +190,10 @@ create policy "public_read_services" on public.services
 -- ── PROFESSIONALS policies ───────────────────────────────────
 create policy "owner_manage_professionals" on public.professionals
   for all using (
-    business_id in (select id from public.businesses where owner_id = auth.uid())
+    business_id in (select id from public.businesses where owner_id = auth.uid() or public.is_platform_admin())
   )
   with check (
-    business_id in (select id from public.businesses where owner_id = auth.uid())
+    business_id in (select id from public.businesses where owner_id = auth.uid() or public.is_platform_admin())
   );
 create policy "public_read_professionals" on public.professionals
   for select using (active = true);
@@ -159,14 +204,14 @@ create policy "owner_manage_prof_services" on public.professional_services
     professional_id in (
       select p.id from public.professionals p
       join public.businesses b on b.id = p.business_id
-      where b.owner_id = auth.uid()
+      where b.owner_id = auth.uid() or public.is_platform_admin()
     )
   )
   with check (
     professional_id in (
       select p.id from public.professionals p
       join public.businesses b on b.id = p.business_id
-      where b.owner_id = auth.uid()
+      where b.owner_id = auth.uid() or public.is_platform_admin()
     )
   );
 create policy "public_read_prof_services" on public.professional_services
@@ -175,10 +220,10 @@ create policy "public_read_prof_services" on public.professional_services
 -- ── BUSINESS_HOURS policies ──────────────────────────────────
 create policy "owner_manage_hours" on public.business_hours
   for all using (
-    business_id in (select id from public.businesses where owner_id = auth.uid())
+    business_id in (select id from public.businesses where owner_id = auth.uid() or public.is_platform_admin())
   )
   with check (
-    business_id in (select id from public.businesses where owner_id = auth.uid())
+    business_id in (select id from public.businesses where owner_id = auth.uid() or public.is_platform_admin())
   );
 create policy "public_read_hours" on public.business_hours
   for select using (true);
@@ -186,10 +231,10 @@ create policy "public_read_hours" on public.business_hours
 -- ── APPOINTMENTS policies ────────────────────────────────────
 create policy "owner_manage_appointments" on public.appointments
   for all using (
-    business_id in (select id from public.businesses where owner_id = auth.uid())
+    business_id in (select id from public.businesses where owner_id = auth.uid() or public.is_platform_admin())
   )
   with check (
-    business_id in (select id from public.businesses where owner_id = auth.uid())
+    business_id in (select id from public.businesses where owner_id = auth.uid() or public.is_platform_admin())
   );
 create policy "public_insert_appointment" on public.appointments
   for insert with check (
@@ -375,7 +420,7 @@ begin
     end if;
   else
     select p.id
-      into v_assigned;
+      into v_assigned
     from public.professionals p
     join public.professional_services ps on ps.professional_id = p.id
     where p.business_id = new.business_id
