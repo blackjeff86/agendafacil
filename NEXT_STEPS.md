@@ -34,6 +34,12 @@ Checklist do que ainda falta **fora do código** (deploy, credenciais, SQL) para
 - [ ] Redeploy na Vercel após alterar variáveis `VITE_*`.
 - [ ] Confirmar que o **cron** aparece no painel Vercel (path `/api/cron/appointment-reminders`) e que `CRON_SECRET` está definido se quiser o job protegido.
 
+## Retomar ambiente local
+
+- [ ] Quando formos voltar a testar localmente, executar `npm run dev`.
+- [x] Dependências já instaladas em `2026-05-10`.
+- [x] Build local validado com `npm run build` em `2026-05-10`.
+
 ## Melhorias futuras (produto / código)
 
 - [ ] Integração de **pagamento** (PIX com confirmação automática ou gateway).
