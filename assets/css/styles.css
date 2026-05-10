@@ -87,6 +87,9 @@
   .card-menu-item:hover{background:var(--brand-light);}
   .card-menu-item.warning{color:#92400E;}
   .btn-warning{background:#FEF3C7;color:#92400E;}
+  .soft-inactive{opacity:.68;filter:saturate(.7);}
+  .soft-inactive .service-icon,.soft-inactive .avatar{background:#F3F4F6;color:#9CA3AF;}
+  .soft-inactive .font-bold,.soft-inactive .font-semibold{color:#6B7280;}
   /* ── PROFESSIONAL CARD ── */
   .prof-card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px;cursor:pointer;border:2px solid transparent;transition:border .2s;}
   .prof-card.selected{border-color:var(--brand);}

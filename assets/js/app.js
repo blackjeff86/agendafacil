@@ -500,7 +500,7 @@ function renderServicos() {
     ? state.services
         .map(
           (service) => `
-            <div class="card card-sm flex items-center gap-3" style="margin-bottom:10px;">
+            <div class="card card-sm flex items-center gap-3 ${service.active ? "" : "soft-inactive"}" style="margin-bottom:10px;">
               <div class="service-icon">${service.icon || "✂️"}</div>
               <div style="flex:1;">
                 <div class="flex justify-between items-center gap-2">
@@ -539,7 +539,7 @@ function renderProfissionais() {
             .filter(Boolean);
 
           return `
-            <div class="card card-sm flex items-center gap-3" style="margin-bottom:10px;">
+            <div class="card card-sm flex items-center gap-3 ${professional.active ? "" : "soft-inactive"}" style="margin-bottom:10px;">
               <div class="avatar avatar-lg">${professional.emoji || "👤"}</div>
               <div style="flex:1;">
                 <div class="flex justify-between items-center gap-2">
@@ -683,7 +683,7 @@ async function updateAppointmentStatus(status) {
     await refreshAllBusinessData();
   } catch (error) {
     console.error(error);
-    showToast(getErrorMessage(error));
+    showToast(getFriendlyAppointmentError(error));
   } finally {
     showLoading(false);
   }
@@ -1416,7 +1416,7 @@ async function renderTimeGrid() {
   const availability = await Promise.all(
     slots.map(async (slot) => ({
       slot,
-      available: await checkSlotAvailability(slot, service.duration),
+      available: await checkSlotAvailability(slot),
     }))
   );
 
@@ -1434,16 +1434,16 @@ async function renderTimeGrid() {
     .join("");
 }
 
-async function checkSlotAvailability(slot, duration) {
+async function checkSlotAvailability(slot) {
   if (!state.publicData.business) return false;
   const client = getSupabaseClient();
   const professionalId = bookingState.profId === 0 ? null : bookingState.profId;
   const { data, error } = await client.rpc("is_slot_available", {
     p_business_id: state.publicData.business.id,
+    p_service_id: bookingState.serviceId,
     p_professional_id: professionalId,
     p_date: bookingState.date,
     p_time: slot,
-    p_duration: duration,
   });
   if (error) {
     console.error(error);
@@ -1524,7 +1524,7 @@ async function confirmBooking() {
     };
   } catch (error) {
     console.error(error);
-    showToast(getErrorMessage(error));
+    showToast(getFriendlyAppointmentError(error));
   } finally {
     showLoading(false);
   }
@@ -1866,6 +1866,19 @@ function renderEmptyState(message) {
 
 function getErrorMessage(error) {
   return error?.message || "Algo deu errado. Tente novamente.";
+}
+
+function getFriendlyAppointmentError(error) {
+  const message = String(error?.message || "");
+  if (
+    message.includes("Horario indisponivel") ||
+    message.includes("Nao existe profissional disponivel") ||
+    message.includes("Horario fora do expediente") ||
+    message.includes("fechado nesta data")
+  ) {
+    return message;
+  }
+  return getErrorMessage(error);
 }
 
 function resetServiceModal() {
