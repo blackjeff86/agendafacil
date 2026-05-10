@@ -1,6 +1,7 @@
 const SUPABASE_URL = "https://vjwrgibbirtaeyqbzoxk.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ha-xTX201rlnk1_eVm46pg_XZOrdl3v";
 const APP_BASE_URL = "https://agendafacil-two.vercel.app";
+const SUPPORT_ACCOUNT_EMAIL = "agendafacil26@gmail.com";
 
 let supabaseClient = null;
 
@@ -234,6 +235,7 @@ function exposeActionsToWindow() {
 function setupStaticBehavior() {
   const signupBusinessName = document.getElementById("signupBusinessName");
   const signupSlug = document.getElementById("signupSlug");
+  const signupEmail = document.getElementById("signupEmail");
   const setupBusinessName = document.getElementById("setupBusinessName");
   const setupSlug = document.getElementById("setupSlug");
 
@@ -249,6 +251,9 @@ function setupStaticBehavior() {
   });
   signupSlug.addEventListener("input", () => {
     signupSlug.dataset.edited = "1";
+  });
+  signupEmail.addEventListener("input", () => {
+    syncSignupFormMode();
   });
   setupSlug.addEventListener("input", () => {
     setupSlug.dataset.edited = "1";
@@ -278,6 +283,8 @@ function setupStaticBehavior() {
       }
     });
   });
+
+  syncSignupFormMode();
 }
 
 function setupPhoneMasks() {
@@ -360,8 +367,11 @@ async function loadAdminExperience() {
     return;
   }
 
+  applyBodyMode(state.isPlatformAdmin ? "support" : "app");
   showScreen("adminShell");
-  await refreshAllBusinessData();
+  if (state.business) {
+    await refreshAllBusinessData();
+  }
   await loadSupportBusinesses();
   document.getElementById("supportNavItem").classList.toggle("hidden", !state.isPlatformAdmin);
   navTo(state.isPlatformAdmin ? "pageSupport" : "pageDashboard");
@@ -387,6 +397,12 @@ function openAppEntry(mode) {
 }
 
 async function ensureBusinessExists() {
+  if (isInternalSupportAccount()) {
+    localStorage.removeItem("agendafacil_pending_setup");
+    state.business = null;
+    return;
+  }
+
   const client = getSupabaseClient();
   const { data, error } = await client
     .from("businesses")
@@ -671,7 +687,7 @@ async function loadSupportBusinesses() {
   const client = getSupabaseClient();
   const { data, error } = await client.from("businesses").select("*").order("created_at", { ascending: false });
   if (error) throw error;
-  state.supportBusinesses = data ?? [];
+  state.supportBusinesses = (data ?? []).filter((business) => !isSupportInternalBusiness(business));
   renderSupportBusinesses();
 }
 
@@ -924,6 +940,7 @@ async function doLogin() {
 }
 
 async function doSignup() {
+  const isSupportSignup = isSupportAccountEmail(document.getElementById("signupEmail").value.trim());
   const draft = {
     name: document.getElementById("signupBusinessName").value.trim(),
     slug: slugify(document.getElementById("signupSlug").value.trim()),
@@ -932,7 +949,7 @@ async function doSignup() {
     password: document.getElementById("signupPass").value.trim(),
   };
 
-  if (!draft.name || !draft.slug || !draft.email || !draft.password) {
+  if ((!isSupportSignup && (!draft.name || !draft.slug)) || !draft.email || !draft.password) {
     showToast("Preencha todos os campos para criar a conta.");
     return;
   }
@@ -940,18 +957,24 @@ async function doSignup() {
   showLoading(true);
   try {
     const client = getSupabaseClient();
-    localStorage.setItem("agendafacil_pending_setup", JSON.stringify(draft));
+    if (isSupportSignup) {
+      localStorage.removeItem("agendafacil_pending_setup");
+    } else {
+      localStorage.setItem("agendafacil_pending_setup", JSON.stringify(draft));
+    }
     const { data, error } = await client.auth.signUp({
       email: draft.email,
       password: draft.password,
       options: {
-        data: {
-          pending_business: {
-            name: draft.name,
-            slug: draft.slug,
-            category: draft.category,
-          },
-        },
+        data: isSupportSignup
+          ? {}
+          : {
+              pending_business: {
+                name: draft.name,
+                slug: draft.slug,
+                category: draft.category,
+              },
+            },
       },
     });
     if (error) throw error;
@@ -959,12 +982,18 @@ async function doSignup() {
     if (data.session?.user) {
       state.session = data.session;
       state.user = data.user;
-      await createBusinessWithSeed(draft);
+      if (!isSupportSignup) {
+        await createBusinessWithSeed(draft);
+      }
       await loadAdminExperience();
       return;
     }
 
-    showToast("Conta criada. Confirme seu e-mail no Supabase e depois faça login.");
+    showToast(
+      isSupportSignup
+        ? "Conta interna criada. Confirme seu e-mail e depois faça login no painel de suporte."
+        : "Conta criada. Confirme seu e-mail no Supabase e depois faça login."
+    );
     switchAuthMode("login");
     document.getElementById("loginEmail").value = draft.email;
   } catch (error) {
@@ -1271,6 +1300,9 @@ function switchAuthMode(mode) {
   document.getElementById("tabSignup").classList.toggle("active", !isLogin);
   document.getElementById("loginForm").classList.toggle("hidden", !isLogin);
   document.getElementById("signupForm").classList.toggle("hidden", isLogin);
+  if (!isLogin) {
+    syncSignupFormMode();
+  }
 }
 
 function showSetupPage() {
@@ -1290,6 +1322,7 @@ async function logout() {
     await client.auth.signOut();
     state.session = null;
     state.user = null;
+    state.isPlatformAdmin = false;
     state.business = null;
     showScreen("loginPage");
   } finally {
@@ -1857,6 +1890,13 @@ function showScreen(id) {
   ["landingPage", "loginPage", "setupPage", "blockedPage", "adminShell", "publicShell"].forEach((screenId) => {
     document.getElementById(screenId).classList.toggle("hidden", screenId !== id);
   });
+  if (id === "landingPage") {
+    applyBodyMode("landing");
+  } else if (id === "loginPage" || id === "setupPage" || id === "blockedPage") {
+    applyBodyMode("auth");
+  } else if (id === "publicShell") {
+    applyBodyMode("public");
+  }
 }
 
 function showLoading(active) {
@@ -1896,6 +1936,9 @@ function getPendingSetup() {
 }
 
 function getPendingSetupFromMetadata() {
+  if (isInternalSupportAccount()) {
+    return null;
+  }
   const pending = state.user?.user_metadata?.pending_business;
   if (!pending?.name || !pending?.slug) {
     return null;
@@ -1943,6 +1986,42 @@ function slugify(value) {
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
+}
+
+function isSupportAccountEmail(email) {
+  return String(email || "").trim().toLowerCase() === SUPPORT_ACCOUNT_EMAIL;
+}
+
+function isInternalSupportAccount() {
+  return state.isPlatformAdmin && isSupportAccountEmail(state.user?.email);
+}
+
+function isSupportInternalBusiness(business) {
+  return isSupportAccountEmail(business?.owner_email);
+}
+
+function syncSignupFormMode() {
+  const isSupportSignup = isSupportAccountEmail(document.getElementById("signupEmail")?.value);
+  const businessFields = document.getElementById("signupBusinessFields");
+  const supportNote = document.getElementById("supportSignupNote");
+  const submitButton = document.getElementById("signupSubmitButton");
+  const businessName = document.getElementById("signupBusinessName");
+  const slug = document.getElementById("signupSlug");
+
+  if (!businessFields || !supportNote || !submitButton || !businessName || !slug) {
+    return;
+  }
+
+  businessFields.classList.toggle("hidden", isSupportSignup);
+  supportNote.classList.toggle("hidden", !isSupportSignup);
+  businessName.required = !isSupportSignup;
+  slug.required = !isSupportSignup;
+  submitButton.textContent = isSupportSignup ? "Criar conta de suporte" : "Criar conta e negócio";
+}
+
+function applyBodyMode(mode) {
+  document.body.classList.remove("body-landing", "body-auth", "body-public", "body-app", "body-support");
+  document.body.classList.add(`body-${mode}`);
 }
 
 function formatCurrency(value) {

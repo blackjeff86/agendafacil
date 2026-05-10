@@ -75,61 +75,91 @@
   </div>
 
   <section id="loginPage">
-    <div class="login-card">
-      <div class="logo-big">✂️</div>
-      <div class="brand-name">AgendaFácil</div>
-      <div class="brand-sub">SaaS de agendamento para salão, barbearia e estética</div>
-      <div class="connection-badge">Supabase conectado</div>
-
-      <div class="auth-tabs">
-        <button class="auth-tab active" id="tabLogin" type="button" onclick="switchAuthMode('login')">Entrar</button>
-        <button class="auth-tab" id="tabSignup" type="button" onclick="switchAuthMode('signup')">Criar conta</button>
+    <div class="auth-desktop-shell">
+      <div class="auth-desktop-copy">
+        <div class="landing-badge">AgendaFácil</div>
+        <h1>Painel web para salões e acesso interno da plataforma.</h1>
+        <p>
+          Lojistas entram para gerenciar agenda, serviços, equipe e link público. A conta interna de suporte
+          é separada e acessa apenas a gestão dos clientes da plataforma.
+        </p>
+        <div class="auth-copy-grid">
+          <div class="auth-copy-card">
+            <strong>Para lojistas</strong>
+            <span>Cadastro com criação do negócio, equipe e horários.</span>
+          </div>
+          <div class="auth-copy-card">
+            <strong>Para suporte AgendaFácil</strong>
+            <span>Acesso administrativo da plataforma, sem criar nova loja.</span>
+          </div>
+          <div class="auth-copy-card">
+            <strong>Ambiente web</strong>
+            <span>Layout pensado para uso no computador, com gestão completa.</span>
+          </div>
+        </div>
       </div>
 
-      <form id="loginForm" class="stack" onsubmit="event.preventDefault(); doLogin();">
-        <div class="input-group">
-          <label for="loginEmail">E-mail</label>
-          <input type="email" id="loginEmail" placeholder="seu@email.com" required />
-        </div>
-        <div class="input-group">
-          <label for="loginPass">Senha</label>
-          <input type="password" id="loginPass" placeholder="Sua senha" required />
-        </div>
-        <button class="btn btn-brand mt-2" type="submit">Entrar</button>
-      </form>
+      <div class="login-card desktop-login-card">
+        <div class="logo-big">✂️</div>
+        <div class="brand-name">AgendaFácil</div>
+        <div class="brand-sub">Acesse sua conta ou cadastre um novo salão</div>
+        <div class="connection-badge">Supabase conectado</div>
 
-      <form id="signupForm" class="stack hidden" onsubmit="event.preventDefault(); doSignup();">
-        <div class="input-group">
-          <label for="signupBusinessName">Nome do negócio</label>
-          <input type="text" id="signupBusinessName" placeholder="Ex: Studio Bella" required />
+        <div class="auth-tabs">
+          <button class="auth-tab active" id="tabLogin" type="button" onclick="switchAuthMode('login')">Entrar</button>
+          <button class="auth-tab" id="tabSignup" type="button" onclick="switchAuthMode('signup')">Criar conta</button>
         </div>
-        <div class="input-group">
-          <label for="signupSlug">Link público</label>
-          <input type="text" id="signupSlug" placeholder="studio-bella" required />
-          <div class="helper-text">Esse texto vira seu link de agendamento.</div>
-        </div>
-        <div class="input-group">
-          <label for="signupCategory">Categoria</label>
-          <select id="signupCategory">
-            <option>Salão de Beleza</option>
-            <option>Barbearia</option>
-            <option>Manicure e Pedicure</option>
-            <option>Clínica Estética</option>
-          </select>
-        </div>
-        <div class="input-group">
-          <label for="signupEmail">E-mail</label>
-          <input type="email" id="signupEmail" placeholder="contato@negocio.com" required />
-        </div>
-        <div class="input-group">
-          <label for="signupPass">Senha</label>
-          <input type="password" id="signupPass" placeholder="Crie uma senha" required />
-        </div>
-        <button class="btn btn-brand mt-2" type="submit">Criar conta e negócio</button>
-      </form>
 
-      <div class="divider"></div>
-      <button class="btn btn-ghost" id="btnPublicPreview" type="button" onclick="showPublicBooking()">Ver página pública</button>
+        <form id="loginForm" class="stack" onsubmit="event.preventDefault(); doLogin();">
+          <div class="input-group">
+            <label for="loginEmail">E-mail</label>
+            <input type="email" id="loginEmail" placeholder="seu@email.com" required />
+          </div>
+          <div class="input-group">
+            <label for="loginPass">Senha</label>
+            <input type="password" id="loginPass" placeholder="Sua senha" required />
+          </div>
+          <button class="btn btn-brand mt-2" type="submit">Entrar</button>
+        </form>
+
+        <form id="signupForm" class="stack hidden" onsubmit="event.preventDefault(); doSignup();">
+          <div class="signup-business-fields" id="signupBusinessFields">
+            <div class="input-group">
+              <label for="signupBusinessName">Nome do negócio</label>
+              <input type="text" id="signupBusinessName" placeholder="Ex: Studio Bella" required />
+            </div>
+            <div class="input-group">
+              <label for="signupSlug">Link público</label>
+              <input type="text" id="signupSlug" placeholder="studio-bella" required />
+              <div class="helper-text">Esse texto vira seu link de agendamento.</div>
+            </div>
+            <div class="input-group">
+              <label for="signupCategory">Categoria</label>
+              <select id="signupCategory">
+                <option>Salão de Beleza</option>
+                <option>Barbearia</option>
+                <option>Manicure e Pedicure</option>
+                <option>Clínica Estética</option>
+              </select>
+            </div>
+          </div>
+          <div class="support-signup-note hidden" id="supportSignupNote">
+            Você está usando o e-mail interno de suporte da AgendaFácil. Essa conta será criada sem abrir uma loja nova.
+          </div>
+          <div class="input-group">
+            <label for="signupEmail">E-mail</label>
+            <input type="email" id="signupEmail" placeholder="contato@negocio.com" required />
+          </div>
+          <div class="input-group">
+            <label for="signupPass">Senha</label>
+            <input type="password" id="signupPass" placeholder="Crie uma senha" required />
+          </div>
+          <button class="btn btn-brand mt-2" id="signupSubmitButton" type="submit">Criar conta e negócio</button>
+        </form>
+
+        <div class="divider"></div>
+        <button class="btn btn-ghost" id="btnPublicPreview" type="button" onclick="showPublicBooking()">Ver página pública</button>
+      </div>
     </div>
   </section>
 
@@ -317,7 +347,15 @@
     </nav>
 
     <div id="pageSupport" class="page">
-      <div class="top-bar"><h2>Gestão de Clientes</h2></div>
+      <div class="top-bar support-top-bar">
+        <div>
+          <div class="text-sm text-sub">Painel interno AgendaFácil</div>
+          <h2>Gestão de Clientes</h2>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="btn btn-link btn-sm" type="button" onclick="logout()">Sair</button>
+        </div>
+      </div>
       <div class="scroll-area p-4">
         <div class="card">
           <div class="input-group" style="margin-bottom:0;">
