@@ -974,6 +974,39 @@
   </div>
 
   <div id="publicShell" class="hidden">
+    <div id="publicClientPortal" class="page page-nopad hidden">
+      <div class="pub-hero pub-hero-portal">
+        <div class="biz-logo" id="clientPortalHeroEmoji">👋</div>
+        <div class="portal-kicker">Área do cliente</div>
+        <h1 id="clientPortalHeroName">Seus agendamentos</h1>
+        <p id="clientPortalHeroText">Acompanhe seus horários e reagende quando precisar.</p>
+        <div class="meta">
+          <span id="clientPortalBusinessMeta">AgendaFácil</span>
+          <span id="clientPortalPhoneMeta">WhatsApp</span>
+        </div>
+      </div>
+
+      <div class="p-4">
+        <div class="stat-grid portal-stat-grid" id="clientPortalStats"></div>
+
+        <div class="card card-sm">
+          <div class="dashboard-title-row">
+            <div>
+              <div class="section-title" style="margin-bottom:4px;">Próximos serviços</div>
+              <div class="text-sm text-sub" id="clientPortalDateLabel">Visualize seus horários futuros e reagende quando precisar.</div>
+            </div>
+            <button class="dashboard-clear-filter hidden" id="clientPortalClearDate" type="button" onclick="clearCustomerPortalDateFilter()" aria-label="Limpar filtro de data">✕</button>
+          </div>
+          <div class="date-scroll dashboard-date-scroll" id="clientPortalDateScroll"></div>
+        </div>
+
+        <div class="card card-sm">
+          <div class="section-title" style="margin-bottom:10px;">Sua agenda</div>
+          <div id="clientPortalAppointmentList"></div>
+        </div>
+      </div>
+    </div>
+
     <div id="pubStep0" class="page page-nopad active">
       <div class="pub-hero">
         <div class="biz-logo" id="publicHeroEmoji">✂️</div>
@@ -1130,6 +1163,32 @@
       <div class="success-actions">
         <button style="background:none;border:2px solid rgba(255,255,255,.5);border-radius:12px;color:#fff;padding:14px 20px;font-size:15px;font-weight:600;cursor:pointer;width:100%;max-width:360px;" type="button" onclick="showPublicBooking()">Fazer novo agendamento</button>
       </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalClientPortalReschedule">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="font-bold text-lg mb-2">Reagendar horário</div>
+      <div class="text-sm text-sub mb-4" id="clientPortalRescheduleIntro">Escolha uma nova data e um novo horário disponível.</div>
+      <div class="card card-sm" style="margin-bottom:14px;">
+        <div class="summary-row">
+          <span class="label">Serviço</span>
+          <span class="value" id="clientPortalRescheduleService">—</span>
+        </div>
+        <div class="summary-row">
+          <span class="label">Profissional</span>
+          <span class="value" id="clientPortalRescheduleProfessional">—</span>
+        </div>
+        <div class="summary-row">
+          <span class="label">Data atual</span>
+          <span class="value" id="clientPortalRescheduleCurrentDate">—</span>
+        </div>
+      </div>
+      <div class="date-scroll" id="clientPortalRescheduleDateScroll"></div>
+      <div class="time-grid" id="clientPortalRescheduleTimeGrid"></div>
+      <button class="btn btn-brand" type="button" onclick="confirmCustomerPortalReschedule()">Confirmar novo horário</button>
+      <button class="btn btn-ghost mt-2" type="button" onclick="closeCustomerPortalRescheduleModal()">Cancelar</button>
     </div>
   </div>
 

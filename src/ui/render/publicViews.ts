@@ -1,6 +1,8 @@
 import { bookingState, state } from "../../state/store";
 import { emptyStateHtml } from "../components/emptyState";
-import { formatCurrency, formatHoursSummary, formatLongDate } from "../../utils/formatters";
+import { formatCurrency, formatDateShort, formatHoursSummary, formatLongDate, formatTime } from "../../utils/formatters";
+import { STATUS_LABELS } from "../../state/store";
+import { findProfessional, findService } from "../../state/selectors";
 
 export function renderPublicLanding(): void {
   const { business, services, professionals, hours } = state.publicData;
@@ -195,4 +197,120 @@ export function fillSummary(): void {
   set("sumTime", bookingState.time || "—");
   set("sumDuration", service ? `${service.duration} minutos` : "—");
   set("sumPrice", service ? formatCurrency(service.price) : "—");
+}
+
+export function renderCustomerPortal(): void {
+  const portal = state.publicCustomerPortal;
+  if (!portal) return;
+
+  const hero = document.getElementById("clientPortalHeroEmoji");
+  if (hero) {
+    if (portal.business.logo_image_url) {
+      hero.innerHTML = `<img src="${portal.business.logo_image_url}" alt="Logo do negócio" style="width:100%;height:100%;object-fit:cover;border-radius:20px;" />`;
+    } else {
+      hero.textContent = portal.business.logo_emoji || "✂️";
+    }
+  }
+
+  const setText = (id: string, text: string) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+
+  setText("clientPortalHeroName", portal.customer.name);
+  setText("clientPortalHeroText", "Veja seus horários, acompanhe o status e reagende quando precisar.");
+  setText("clientPortalBusinessMeta", portal.business.name);
+  setText("clientPortalPhoneMeta", portal.customer.phone || portal.business.whatsapp || "WhatsApp");
+
+  const stats = document.getElementById("clientPortalStats");
+  if (stats) {
+    const all = portal.appointments.length;
+    const confirmed = portal.appointments.filter((item) => item.status === "confirmado").length;
+    const pending = portal.appointments.filter((item) => item.status === "pendente").length;
+    const done = portal.appointments.filter((item) => item.status === "concluido").length;
+    stats.innerHTML = `
+      <div class="stat-card"><div class="stat-icon">📅</div><div class="stat-val">${all}</div><div class="stat-label">Reservas feitas</div></div>
+      <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-val">${confirmed}</div><div class="stat-label">Confirmadas</div></div>
+      <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-val">${pending}</div><div class="stat-label">Pendentes</div></div>
+      <div class="stat-card"><div class="stat-icon">✨</div><div class="stat-val">${done}</div><div class="stat-label">Concluídas</div></div>
+    `;
+  }
+
+  renderCustomerPortalDateScroll();
+  renderCustomerPortalAppointments();
+}
+
+export function renderCustomerPortalDateScroll(): void {
+  const portal = state.publicCustomerPortal;
+  const container = document.getElementById("clientPortalDateScroll");
+  if (!portal || !container) return;
+  const upcoming = [...portal.appointments]
+    .filter((item) => item.status !== "cancelado" && item.status !== "concluido")
+    .sort((a, b) => `${a.appointment_date} ${a.appointment_time}`.localeCompare(`${b.appointment_date} ${b.appointment_time}`));
+  const uniqueDates = [...new Set(upcoming.map((item) => item.appointment_date))].slice(0, 10);
+
+  if (!uniqueDates.length) {
+    container.innerHTML = emptyStateHtml("Você não tem novos horários agendados no momento.");
+    return;
+  }
+
+  container.innerHTML = uniqueDates
+    .map((date) => {
+      const d = new Date(`${date}T12:00:00`);
+      const weekday = d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
+      const selected = state.customerPortalSelectedDate === date;
+      return `
+        <button class="date-btn dashboard-date-btn ${selected ? "selected" : ""}" type="button" onclick="selectCustomerPortalDate('${date}')">
+          <span style="font-size:10px;text-transform:capitalize;">${weekday}</span>
+          <span class="day-num">${d.getDate()}</span>
+        </button>
+      `;
+    })
+    .join("");
+}
+
+export function renderCustomerPortalAppointments(): void {
+  const portal = state.publicCustomerPortal;
+  const container = document.getElementById("clientPortalAppointmentList");
+  const dateLabel = document.getElementById("clientPortalDateLabel");
+  const clearBtn = document.getElementById("clientPortalClearDate");
+  if (!portal || !container || !dateLabel || !clearBtn) return;
+
+  const filtered = state.customerPortalSelectedDate
+    ? portal.appointments.filter((item) => item.appointment_date === state.customerPortalSelectedDate)
+    : portal.appointments.filter((item) => item.status !== "cancelado");
+
+  clearBtn.classList.toggle("hidden", !state.customerPortalSelectedDate);
+  dateLabel.textContent = state.customerPortalSelectedDate
+    ? `Filtro aplicado: ${formatLongDate(state.customerPortalSelectedDate)}`
+    : "Visualize seus horários futuros e reagende quando precisar.";
+
+  const ordered = [...filtered].sort((a, b) => `${a.appointment_date} ${a.appointment_time}`.localeCompare(`${b.appointment_date} ${b.appointment_time}`));
+  container.innerHTML = ordered.length
+    ? ordered
+        .map((appointment) => {
+          const service = portal.services.find((item) => item.id === appointment.service_id) || findService(appointment.service_id);
+          const professional = portal.professionals.find((item) => item.id === appointment.professional_id) || findProfessional(appointment.professional_id);
+          const status = STATUS_LABELS[appointment.status];
+          const canReschedule = appointment.status !== "cancelado" && appointment.status !== "concluido";
+          return `
+            <div class="appt-item portal-appt-item">
+              <div class="appt-time">
+                ${formatTime(appointment.appointment_time)}
+                <small>${formatDateShort(appointment.appointment_date)}</small>
+              </div>
+              <div class="appt-info">
+                <div class="name">${service?.name || "Serviço"}</div>
+                <div class="detail">${professional ? `${professional.emoji || "👤"} ${professional.name}` : "Primeiro disponível"}</div>
+                <div class="detail">${formatLongDate(appointment.appointment_date)}</div>
+                <div class="portal-appt-actions">
+                  <span class="badge ${status?.cls || "badge-brand"}">${status?.label || appointment.status}</span>
+                  ${canReschedule ? `<button class="btn btn-link btn-sm" type="button" onclick="openCustomerPortalReschedule('${appointment.id}')">Reagendar</button>` : ""}
+                </div>
+              </div>
+            </div>
+          `;
+        })
+        .join("")
+    : emptyStateHtml("Nenhum agendamento encontrado para esse filtro.");
 }

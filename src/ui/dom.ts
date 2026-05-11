@@ -65,3 +65,7 @@ export function setTodayDate(): void {
 export function getPublicAppUrl(slug: string): string {
   return `${getAppBaseUrl()}/?slug=${slug}`;
 }
+
+export function getCustomerPortalUrl(portalToken: string): string {
+  return `${getAppBaseUrl()}/?client=${encodeURIComponent(portalToken)}`;
+}

@@ -1,14 +1,27 @@
 import * as appointmentService from "../services/appointmentService";
+import * as customerPortalService from "../services/customerPortalService";
 import { generateTimeSlotsForDate } from "../utils/dates";
 import { getErrorMessage, getFriendlyAppointmentError } from "../utils/errors";
-import { formatLongDate, formatRecurrenceLabel } from "../utils/formatters";
+import { formatLongDate, formatRecurrenceLabel, formatTime } from "../utils/formatters";
 import { onlyDigits } from "../utils/phone";
 import { bookingState, pubStepHistory, setBookingState, state } from "../state/store";
 import type { LastBookingPayload } from "../types";
 import { emptyStateHtml } from "../ui/components/emptyState";
 import { getPublicAppUrl, showLoading, showScreen, showToast, openModal } from "../ui/dom";
 import { applyPublicData, getFallbackPublic, loadPublicData, resetPublicBookingFlow } from "./publicData";
-import { fillSummary, renderDateScroll, renderPubProfs, renderPubServices, renderSecondDateScroll } from "../ui/render/publicViews";
+import {
+  fillSummary,
+  renderCustomerPortal,
+  renderCustomerPortalAppointments,
+  renderCustomerPortalDateScroll,
+  renderDateScroll,
+  renderPubProfs,
+  renderPubServices,
+  renderSecondDateScroll,
+} from "../ui/render/publicViews";
+
+let customerPortalRescheduleDate: string | null = null;
+let customerPortalRescheduleTime: string | null = null;
 
 export function pubGoRaw(step: number): void {
   document.querySelectorAll("#publicShell .page").forEach((page) => {
@@ -431,6 +444,194 @@ export async function showPublicBooking(): Promise<void> {
   } finally {
     showLoading(false);
   }
+}
+
+export function showCustomerPortal(): void {
+  document.querySelectorAll("#publicShell .page").forEach((page) => {
+    page.classList.remove("active");
+    page.classList.add("hidden");
+  });
+  const portalPage = document.getElementById("publicClientPortal");
+  if (portalPage) {
+    portalPage.classList.remove("hidden");
+    portalPage.classList.add("active");
+  }
+  renderCustomerPortal();
+}
+
+export function selectCustomerPortalDate(date: string): void {
+  state.customerPortalSelectedDate = date;
+  renderCustomerPortalDateScroll();
+  renderCustomerPortalAppointments();
+}
+
+export function clearCustomerPortalDateFilter(): void {
+  state.customerPortalSelectedDate = null;
+  renderCustomerPortalDateScroll();
+  renderCustomerPortalAppointments();
+}
+
+function getCustomerPortalSelectedAppointment() {
+  const portal = state.publicCustomerPortal;
+  if (!portal || !state.customerPortalSelectedAppointmentId) return null;
+  return portal.appointments.find((item) => item.id === state.customerPortalSelectedAppointmentId) || null;
+}
+
+function renderCustomerPortalRescheduleDateScroll(): void {
+  const portal = state.publicCustomerPortal;
+  const appointment = getCustomerPortalSelectedAppointment();
+  const container = document.getElementById("clientPortalRescheduleDateScroll");
+  if (!portal || !appointment || !container) return;
+
+  const labels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  const base = new Date();
+  base.setHours(12, 0, 0, 0);
+  const buttons: string[] = [];
+  for (let index = 0; index < 14; index += 1) {
+    const date = new Date(base);
+    date.setDate(base.getDate() + index);
+    const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const selected = customerPortalRescheduleDate === iso;
+    buttons.push(`
+      <button class="date-btn dashboard-date-btn ${selected ? "selected" : ""}" type="button" onclick="selectCustomerPortalRescheduleDate('${iso}')">
+        <span style="font-size:10px;">${labels[date.getDay()]}</span>
+        <span class="day-num">${date.getDate()}</span>
+      </button>
+    `);
+  }
+  container.innerHTML = buttons.join("");
+}
+
+async function renderCustomerPortalRescheduleTimeGrid(): Promise<void> {
+  const portal = state.publicCustomerPortal;
+  const appointment = getCustomerPortalSelectedAppointment();
+  const container = document.getElementById("clientPortalRescheduleTimeGrid");
+  if (!portal || !appointment || !container) return;
+
+  if (!customerPortalRescheduleDate) {
+    container.innerHTML = emptyStateHtml("Escolha uma nova data para ver os horários disponíveis.");
+    return;
+  }
+
+  container.innerHTML = `<div class="text-sm text-sub">Carregando horários...</div>`;
+  const service = portal.services.find((item) => item.id === appointment.service_id);
+  if (!service) {
+    container.innerHTML = emptyStateHtml("Serviço não encontrado para esse agendamento.");
+    return;
+  }
+
+  const slots = generateTimeSlotsForDate(customerPortalRescheduleDate, portal.hours);
+  if (!slots.length) {
+    container.innerHTML = emptyStateHtml("Nenhum horário disponível nessa data.");
+    return;
+  }
+
+  const availability = await Promise.all(
+    slots.map(async (slot) => {
+      const isSameSlot = appointment.appointment_date === customerPortalRescheduleDate && formatTime(appointment.appointment_time) === slot;
+      const available = isSameSlot
+        ? false
+        : await appointmentService.isSlotAvailable({
+            businessId: portal.business.id,
+            serviceId: appointment.service_id,
+            professionalId: appointment.professional_id || null,
+            date: customerPortalRescheduleDate!,
+            time: slot,
+          });
+      return { slot, available };
+    })
+  );
+
+  container.innerHTML = availability
+    .map(
+      ({ slot, available }) => `
+        <button class="time-btn ${customerPortalRescheduleTime === slot ? "selected" : ""}" type="button" ${available ? "" : "disabled"} onclick="selectCustomerPortalRescheduleTime('${slot}')">${slot}</button>
+      `
+    )
+    .join("");
+}
+
+export function openCustomerPortalReschedule(appointmentId: string): void {
+  const portal = state.publicCustomerPortal;
+  if (!portal) return;
+  const appointment = portal.appointments.find((item) => item.id === appointmentId);
+  if (!appointment) return;
+
+  state.customerPortalSelectedAppointmentId = appointmentId;
+  customerPortalRescheduleDate = null;
+  customerPortalRescheduleTime = null;
+
+  const service = portal.services.find((item) => item.id === appointment.service_id);
+  const professional = portal.professionals.find((item) => item.id === appointment.professional_id);
+  const setText = (id: string, text: string) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+  setText("clientPortalRescheduleIntro", "Escolha uma nova data e um novo horário disponível para solicitar o reagendamento.");
+  setText("clientPortalRescheduleService", service?.name || "Serviço");
+  setText("clientPortalRescheduleProfessional", professional ? `${professional.emoji || "👤"} ${professional.name}` : "Primeiro disponível");
+  setText("clientPortalRescheduleCurrentDate", `${formatLongDate(appointment.appointment_date)} às ${formatTime(appointment.appointment_time)}`);
+
+  renderCustomerPortalRescheduleDateScroll();
+  const grid = document.getElementById("clientPortalRescheduleTimeGrid");
+  if (grid) grid.innerHTML = emptyStateHtml("Escolha uma nova data para ver os horários disponíveis.");
+  openModal("modalClientPortalReschedule");
+}
+
+export function selectCustomerPortalRescheduleDate(date: string): void {
+  customerPortalRescheduleDate = date;
+  customerPortalRescheduleTime = null;
+  renderCustomerPortalRescheduleDateScroll();
+  void renderCustomerPortalRescheduleTimeGrid();
+}
+
+export function selectCustomerPortalRescheduleTime(time: string): void {
+  customerPortalRescheduleTime = time;
+  void renderCustomerPortalRescheduleTimeGrid();
+}
+
+export async function confirmCustomerPortalReschedule(): Promise<void> {
+  const portal = state.publicCustomerPortal;
+  const appointment = getCustomerPortalSelectedAppointment();
+  if (!portal || !appointment || !portal.customer.portal_token) return;
+  if (!customerPortalRescheduleDate || !customerPortalRescheduleTime) {
+    showToast("Escolha uma nova data e um novo horário para continuar.");
+    return;
+  }
+
+  showLoading(true);
+  try {
+    const updated = await customerPortalService.rescheduleCustomerPortalAppointment({
+      portalToken: portal.customer.portal_token,
+      appointmentId: appointment.id,
+      appointmentDate: customerPortalRescheduleDate,
+      appointmentTime: customerPortalRescheduleTime,
+    });
+
+    portal.appointments = portal.appointments.map((item) => (item.id === updated.id ? updated : item));
+    state.publicCustomerPortal = { ...portal };
+    state.customerPortalSelectedDate = updated.appointment_date;
+    state.customerPortalSelectedAppointmentId = null;
+    customerPortalRescheduleDate = null;
+    customerPortalRescheduleTime = null;
+    const modal = document.getElementById("modalClientPortalReschedule");
+    modal?.classList.remove("open");
+    renderCustomerPortal();
+    showToast("Reagendamento solicitado com sucesso.");
+  } catch (error) {
+    console.error(error);
+    showToast(getFriendlyAppointmentError(error));
+  } finally {
+    showLoading(false);
+  }
+}
+
+export function closeCustomerPortalRescheduleModal(): void {
+  state.customerPortalSelectedAppointmentId = null;
+  customerPortalRescheduleDate = null;
+  customerPortalRescheduleTime = null;
+  const modal = document.getElementById("modalClientPortalReschedule");
+  modal?.classList.remove("open");
 }
 
 export function openBusinessWhatsApp(): void {

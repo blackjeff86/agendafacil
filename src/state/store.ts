@@ -10,6 +10,7 @@ import type {
   ProfessionalRow,
   ProfessionalServiceRow,
   PublicData,
+  CustomerPortalData,
   ServiceRow,
   SupportEventRow,
 } from "../types";
@@ -50,6 +51,9 @@ export interface AppState {
   supportFilter: string;
   supportPage: number;
   publicData: PublicData;
+  publicCustomerPortal: CustomerPortalData | null;
+  customerPortalSelectedDate: string | null;
+  customerPortalSelectedAppointmentId: string | null;
 }
 
 export const state: AppState = {
@@ -84,6 +88,9 @@ export const state: AppState = {
     professionals: [],
     hours: [],
   },
+  publicCustomerPortal: null,
+  customerPortalSelectedDate: null,
+  customerPortalSelectedAppointmentId: null,
 };
 
 export let bookingState: BookingState = {

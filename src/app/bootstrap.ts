@@ -9,8 +9,8 @@ import { slugify } from "../utils/strings";
 import { createBusinessAndSeed } from "./businessLifecycle";
 import { refreshAllBusinessData } from "./refresh";
 import { syncEntryViewFromUrl } from "./authUi";
-import { loadPublicData } from "./publicData";
-import { pubGoRaw } from "./publicFlow";
+import { loadCustomerPortalData, loadPublicData } from "./publicData";
+import { pubGoRaw, showCustomerPortal } from "./publicFlow";
 import { navTo } from "./navigation";
 
 function getPendingSetup(): Record<string, string> | null {
@@ -124,6 +124,7 @@ export async function bootstrapApp(): Promise<void> {
   try {
     const params = new URLSearchParams(window.location.search);
     const slug = params.get("slug");
+    const clientPortalToken = params.get("client");
     const { session, error } = await authService.getSession();
     if (error) throw error;
 
@@ -134,6 +135,13 @@ export async function bootstrapApp(): Promise<void> {
       state.session = nextSession;
       state.user = nextSession?.user ?? null;
     });
+
+    if (clientPortalToken) {
+      await loadCustomerPortalData(clientPortalToken);
+      showScreen("publicShell");
+      showCustomerPortal();
+      return;
+    }
 
     if (slug) {
       await loadPublicData(slug);

@@ -1,7 +1,8 @@
 import { buildFallbackPublic } from "../constants/fallbackPublic";
+import * as customerPortalService from "../services/customerPortalService";
 import * as publicBookingService from "../services/publicBookingService";
 import { bookingState, setBookingState, setPubStepHistory, state } from "../state/store";
-import type { BookingState, ProfessionalRow, PublicData } from "../types";
+import type { BookingState, CustomerPortalData, ProfessionalRow, PublicData } from "../types";
 import { renderPublicLanding, renderSecondDateScroll } from "../ui/render/publicViews";
 
 export function resetPublicBookingFlow(mode: BookingState["mode"] = "service"): void {
@@ -109,6 +110,17 @@ export async function loadPublicData(slug: string): Promise<void> {
     professionals: bundle.professionals,
     hours: bundle.hours,
   });
+}
+
+export function applyCustomerPortalData(data: CustomerPortalData): void {
+  state.publicCustomerPortal = data;
+  state.customerPortalSelectedDate = null;
+  state.customerPortalSelectedAppointmentId = null;
+}
+
+export async function loadCustomerPortalData(portalToken: string): Promise<void> {
+  const bundle = await customerPortalService.loadCustomerPortalByToken(portalToken);
+  applyCustomerPortalData(bundle);
 }
 
 export function getFallbackPublic(): PublicData {

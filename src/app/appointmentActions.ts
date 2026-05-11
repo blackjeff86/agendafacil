@@ -15,7 +15,7 @@ import {
   buildAppointmentRescheduledTemplateFromRow,
   type AppointmentCancellationKind,
 } from "../utils/whatsappTemplates";
-import { showLoading, showToast, openModal, closeModal as closeModalEl } from "../ui/dom";
+import { getCustomerPortalUrl, showLoading, showToast, openModal, closeModal as closeModalEl } from "../ui/dom";
 import { refreshAllBusinessData } from "./refresh";
 import { createSupportEvent } from "./supportEvents";
 
@@ -232,11 +232,20 @@ async function notifyCustomerCancellation(appt: AppointmentRow, kind: Appointmen
   return "Não foi possível preparar o WhatsApp — confira o telefone do cliente.";
 }
 
+function getCustomerPortalText(appt: AppointmentRow): string | null {
+  const customer =
+    state.customers.find((item) => item.id === appt.customer_id) ||
+    state.customers.find((item) => item.phone === appt.client_phone);
+  if (!customer?.portal_token) return null;
+  return `Acompanhe seus horários e reagende quando precisar: ${getCustomerPortalUrl(customer.portal_token)}`;
+}
+
 async function notifyAppointmentConfirmed(appt: AppointmentRow): Promise<string> {
   const businessName = state.business?.name || "Nosso estabelecimento";
   const svc = findService(appt.service_id);
   const prof = findProfessional(appt.professional_id);
   const canAutomate = canUseAutomaticCustomerWhatsApp(state.business);
+  const portalText = getCustomerPortalText(appt);
   if (canAutomate) {
     const template = buildAppointmentConfirmationTemplateFromRow(
       appt,
@@ -247,16 +256,26 @@ async function notifyAppointmentConfirmed(appt: AppointmentRow): Promise<string>
     );
     if (template) {
       const templateResult = await sendWhatsAppTemplate(appt.client_phone, template);
-      if (templateResult.ok) return "Confirmado. Mensagem enviada ao cliente (template WhatsApp).";
+      if (templateResult.ok) {
+        if (portalText) {
+          await sendWhatsAppText(appt.client_phone, portalText, { preferApi: true });
+        }
+        return "Confirmado. Mensagem enviada ao cliente (template WhatsApp).";
+      }
     }
   }
-  const msg = buildAppointmentConfirmationFromRow(
-    appt,
-    businessName,
-    svc?.name || "Serviço",
-    prof?.name || "",
-    Number(svc?.price ?? 0)
-  );
+  const msg = [
+    buildAppointmentConfirmationFromRow(
+      appt,
+      businessName,
+      svc?.name || "Serviço",
+      prof?.name || "",
+      Number(svc?.price ?? 0)
+    ),
+    portalText,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
   const r = await sendWhatsAppText(appt.client_phone, msg, { preferApi: canAutomate });
   if (r.usedApi && r.ok) return "Confirmado. Mensagem enviada ao cliente (WhatsApp API).";
   if (!r.usedApi && r.ok) return "Confirmado. Abra o WhatsApp para enviar a mensagem ao cliente.";
@@ -268,6 +287,7 @@ async function notifyAppointmentRescheduled(appt: AppointmentRow): Promise<strin
   const svc = findService(appt.service_id);
   const prof = findProfessional(appt.professional_id);
   const canAutomate = canUseAutomaticCustomerWhatsApp(state.business);
+  const portalText = getCustomerPortalText(appt);
   if (canAutomate) {
     const template = buildAppointmentRescheduledTemplateFromRow(
       appt,
@@ -278,16 +298,26 @@ async function notifyAppointmentRescheduled(appt: AppointmentRow): Promise<strin
     );
     if (template) {
       const templateResult = await sendWhatsAppTemplate(appt.client_phone, template);
-      if (templateResult.ok) return "Reagendamento confirmado. Mensagem enviada ao cliente (template WhatsApp).";
+      if (templateResult.ok) {
+        if (portalText) {
+          await sendWhatsAppText(appt.client_phone, portalText, { preferApi: true });
+        }
+        return "Reagendamento confirmado. Mensagem enviada ao cliente (template WhatsApp).";
+      }
     }
   }
-  const msg = buildAppointmentRescheduledFromRow(
-    appt,
-    businessName,
-    svc?.name || "Serviço",
-    prof?.name || "",
-    Number(svc?.price ?? 0)
-  );
+  const msg = [
+    buildAppointmentRescheduledFromRow(
+      appt,
+      businessName,
+      svc?.name || "Serviço",
+      prof?.name || "",
+      Number(svc?.price ?? 0)
+    ),
+    portalText,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
   const r = await sendWhatsAppText(appt.client_phone, msg, { preferApi: canAutomate });
   if (r.usedApi && r.ok) return "Reagendamento confirmado. Mensagem enviada ao cliente (WhatsApp API).";
   if (!r.usedApi && r.ok) return "Reagendamento salvo. Abra o WhatsApp para avisar o cliente.";

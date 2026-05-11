@@ -70,6 +70,7 @@ export interface CustomerRow {
   email?: string | null;
   phone: string;
   last_booking_at?: string | null;
+  portal_token?: string | null;
 }
 
 export interface AppointmentSeriesRow {
@@ -182,6 +183,15 @@ export interface PendingBusinessDraft {
 
 export interface PublicData {
   business: Business | null;
+  services: ServiceRow[];
+  professionals: ProfessionalRow[];
+  hours: BusinessHourRow[];
+}
+
+export interface CustomerPortalData {
+  business: Business;
+  customer: CustomerRow;
+  appointments: AppointmentRow[];
   services: ServiceRow[];
   professionals: ProfessionalRow[];
   hours: BusinessHourRow[];

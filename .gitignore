@@ -4,4 +4,7 @@ dist/
 Thumbs.db
 .env
 .env.local
+.env.vercel
+.env.vercel.*
 .vercel
+supabase/.temp/
