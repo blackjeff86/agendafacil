@@ -1,8 +1,8 @@
 import { buildFallbackPublic } from "../constants/fallbackPublic";
 import * as publicBookingService from "../services/publicBookingService";
-import { setBookingState, setPubStepHistory, state } from "../state/store";
+import { bookingState, setBookingState, setPubStepHistory, state } from "../state/store";
 import type { BookingState, ProfessionalRow, PublicData } from "../types";
-import { renderPublicLanding } from "../ui/render/publicViews";
+import { renderPublicLanding, renderSecondDateScroll } from "../ui/render/publicViews";
 
 export function resetPublicBookingFlow(mode: BookingState["mode"] = "service"): void {
   setBookingState({
@@ -11,6 +11,8 @@ export function resetPublicBookingFlow(mode: BookingState["mode"] = "service"): 
     profId: null,
     date: null,
     time: null,
+    secondDate: null,
+    secondTime: null,
   });
   setPubStepHistory([0]);
   const cn = document.getElementById("clientName") as HTMLInputElement | null;
@@ -36,7 +38,46 @@ export function resetPublicBookingFlow(mode: BookingState["mode"] = "service"): 
 
 export function toggleRecurrenceFields(): void {
   const type = (document.getElementById("clientRecurrenceType") as HTMLSelectElement | null)?.value || "none";
-  document.getElementById("clientRecurrenceCountGroup")?.classList.toggle("hidden", type === "none");
+  const group = document.getElementById("clientRecurrenceCountGroup");
+  const secondGroup = document.getElementById("clientSecondWeeklyGroup");
+  const label = document.getElementById("clientRecurrenceCountLabel");
+  const hint = document.getElementById("clientRecurrenceCountHint");
+  const input = document.getElementById("clientRecurrenceCount") as HTMLInputElement | null;
+
+  group?.classList.toggle("hidden", type === "none");
+  secondGroup?.classList.toggle("hidden", type !== "twice_weekly");
+  if (type !== "twice_weekly") {
+    setBookingState({ ...bookingState, secondDate: null, secondTime: null });
+    const secondGrid = document.getElementById("secondTimeGrid");
+    if (secondGrid) secondGrid.innerHTML = "";
+  } else {
+    renderSecondDateScroll();
+  }
+  if (!label || !hint || !input || type === "none") return;
+
+  if (type === "weekly") {
+    label.textContent = "Por quantas semanas?";
+    hint.textContent = "Ex.: 4 semanas = 4 agendamentos, um por semana.";
+    input.min = "2";
+    input.max = "12";
+    if (!input.value || Number(input.value) < 2) input.value = "4";
+    return;
+  }
+
+  if (type === "twice_weekly") {
+    label.textContent = "Por quantas semanas?";
+    hint.textContent = "Ex.: 4 semanas = 8 agendamentos, dois por semana.";
+    input.min = "2";
+    input.max = "12";
+    if (!input.value || Number(input.value) < 2) input.value = "4";
+    return;
+  }
+
+  label.textContent = "Por quantos meses?";
+  hint.textContent = "Ex.: 3 meses = 3 agendamentos, um por mês.";
+  input.min = "2";
+  input.max = "12";
+  if (!input.value || Number(input.value) < 2) input.value = "3";
 }
 
 export function applyPublicData(publicData: PublicData): void {

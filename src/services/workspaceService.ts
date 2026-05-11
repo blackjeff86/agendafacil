@@ -1,4 +1,7 @@
 import { getSupabase } from "../lib/supabase";
+import { getCustomerManagementLimit, isStarterPlan } from "../config/plans";
+import { normalizeBusinessHourRows } from "../utils/businessHours";
+import type { Business } from "../types";
 import type {
   AppointmentRow,
   AppointmentSeriesRow,
@@ -19,12 +22,21 @@ export interface WorkspaceBundle {
   professionalServices: ProfessionalServiceRow[];
 }
 
-export async function loadWorkspaceForBusiness(businessId: string): Promise<WorkspaceBundle> {
+interface WorkspaceLoadOptions {
+  business?: Business | null;
+}
+
+export async function loadWorkspaceForBusiness(businessId: string, options: WorkspaceLoadOptions = {}): Promise<WorkspaceBundle> {
   const sb = getSupabase();
+  let customersQuery = sb.from("customers").select("*").eq("business_id", businessId).order("last_booking_at", { ascending: false });
+  if (options.business && isStarterPlan(options.business)) {
+    customersQuery = customersQuery.limit(getCustomerManagementLimit(options.business));
+  }
+
   const [servicesResult, professionalsResult, customersResult, seriesResult, appointmentsResult, hoursResult] = await Promise.all([
     sb.from("services").select("*").eq("business_id", businessId).order("created_at", { ascending: true }),
     sb.from("professionals").select("*").eq("business_id", businessId).order("created_at", { ascending: true }),
-    sb.from("customers").select("*").eq("business_id", businessId).order("last_booking_at", { ascending: false }),
+    customersQuery,
     sb.from("appointment_series").select("*").eq("business_id", businessId).order("created_at", { ascending: false }),
     sb
       .from("appointments")
@@ -60,7 +72,7 @@ export async function loadWorkspaceForBusiness(businessId: string): Promise<Work
     customers: (customersResult.data ?? []) as CustomerRow[],
     appointmentSeries: (seriesResult.data ?? []) as AppointmentSeriesRow[],
     appointments: (appointmentsResult.data ?? []) as AppointmentRow[],
-    hours: (hoursResult.data ?? []) as BusinessHourRow[],
+    hours: normalizeBusinessHourRows((hoursResult.data ?? []) as BusinessHourRow[]),
     professionalServices,
   };
 }

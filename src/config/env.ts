@@ -6,6 +6,19 @@ export const SUPABASE_ANON_KEY =
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
   "sb_publishable_ha-xTX201rlnk1_eVm46pg_XZOrdl3v";
 
+export const WHATSAPP_EDGE_URL = String(import.meta.env.VITE_WHATSAPP_EDGE_URL || "").trim();
+export const WHATSAPP_EDGE_TOKEN = String(import.meta.env.VITE_WHATSAPP_EDGE_TOKEN || "").trim();
+export const WHATSAPP_TEMPLATE_LANG = String(
+  import.meta.env.VITE_WHATSAPP_TEMPLATE_LANG || import.meta.env.VITE_WHATSAPP_CONFIRM_TEMPLATE_LANG || "pt_BR"
+).trim();
+export const WHATSAPP_CONFIRM_TEMPLATE_NAME = String(import.meta.env.VITE_WHATSAPP_CONFIRM_TEMPLATE_NAME || "").trim();
+export const WHATSAPP_CONFIRM_TEMPLATE_LANG = String(import.meta.env.VITE_WHATSAPP_CONFIRM_TEMPLATE_LANG || "pt_BR").trim();
+export const WHATSAPP_CANCEL_TEMPLATE_NAME = String(import.meta.env.VITE_WHATSAPP_CANCEL_TEMPLATE_NAME || "").trim();
+export const WHATSAPP_RESCHEDULE_TEMPLATE_NAME = String(import.meta.env.VITE_WHATSAPP_RESCHEDULE_TEMPLATE_NAME || "").trim();
+export const WHATSAPP_DAYBEFORE_TEMPLATE_NAME = String(import.meta.env.VITE_WHATSAPP_DAYBEFORE_TEMPLATE_NAME || "").trim();
+export const WHATSAPP_RENEWAL_TEMPLATE_NAME = String(import.meta.env.VITE_WHATSAPP_RENEWAL_TEMPLATE_NAME || "").trim();
+export const WHATSAPP_TRIAL_END_TEMPLATE_NAME = String(import.meta.env.VITE_WHATSAPP_TRIAL_END_TEMPLATE_NAME || "").trim();
+
 export function getAppBaseUrl(): string {
   const fromEnv = import.meta.env.VITE_APP_BASE_URL?.replace(/\/$/, "");
   if (fromEnv) return fromEnv;

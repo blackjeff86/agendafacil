@@ -1,0 +1,17 @@
+export const DEFAULT_SERVICE_CATEGORIES = [
+  "Corte",
+  "Escova",
+  "Coloração",
+  "Tratamento",
+  "Manicure",
+  "Pedicure",
+  "Barba",
+  "Sobrancelha",
+  "Maquiagem",
+  "Estética Facial",
+  "Estética Corporal",
+  "Depilação",
+  "Massagem",
+  "Spa",
+  "Combo",
+];

@@ -14,6 +14,10 @@ export function showScreen(id: string): void {
   }
 }
 
+export function finishInitialBoot(): void {
+  document.body.classList.remove("app-booting");
+}
+
 export function applyBodyMode(mode: "landing" | "auth" | "public" | "app" | "support"): void {
   document.body.classList.remove("body-landing", "body-auth", "body-public", "body-app", "body-support");
   document.body.classList.add(`body-${mode}`);

@@ -1,4 +1,57 @@
+import { state } from "../state/store";
+import { showScreen } from "../ui/dom";
 import { isSupportAccountEmail } from "../ui/render/supportPanel";
+
+const SIGNUP_PLAN_STORAGE_KEY = "agendafacil_signup_plan";
+const PUBLIC_PRO_SIGNUPS_ENABLED = false;
+
+export function normalizeSignupPlan(plan: string | null | undefined): "starter" | "pro" {
+  if (!PUBLIC_PRO_SIGNUPS_ENABLED) return "starter";
+  return plan === "pro" ? "pro" : "starter";
+}
+
+export function getSelectedSignupPlan(): "starter" | "pro" {
+  try {
+    return normalizeSignupPlan(localStorage.getItem(SIGNUP_PLAN_STORAGE_KEY));
+  } catch {
+    return "starter";
+  }
+}
+
+function planLabel(plan: "starter" | "pro"): string {
+  return plan === "pro" ? "Plano Pro" : "Plano Starter";
+}
+
+export function syncSignupPlanChoice(rawPlan?: string | null, shouldSyncUrl = true): void {
+  const plan = normalizeSignupPlan(rawPlan);
+  try {
+    localStorage.setItem(SIGNUP_PLAN_STORAGE_KEY, plan);
+  } catch {}
+
+  const select = document.getElementById("signupPlanTier") as HTMLSelectElement | null;
+  if (select) {
+    select.value = plan;
+    select.disabled = !PUBLIC_PRO_SIGNUPS_ENABLED;
+  }
+
+  const badge = document.getElementById("signupPlanBadge");
+  if (badge) badge.textContent = `${planLabel(plan)} · 7 dias grátis`;
+
+  const hint = document.getElementById("signupPlanHint");
+  if (hint) {
+    hint.textContent = PUBLIC_PRO_SIGNUPS_ENABLED
+      ? plan === "pro"
+        ? "Você vai começar no trial do Plano Pro e, se continuar, segue com os recursos avançados."
+        : "Você vai começar no trial do Plano Starter e pode fazer upgrade para Pro quando quiser."
+      : "No momento, novas lojas começam pelo trial do Plano Starter. O Plano Pro será liberado em breve.";
+  }
+
+  if (shouldSyncUrl) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("plan", plan);
+    window.history.replaceState(window.history.state || {}, "", url);
+  }
+}
 
 export function switchAuthMode(mode: "login" | "signup"): void {
   const isLogin = mode === "login";
@@ -29,4 +82,27 @@ export function syncSignupFormMode(): void {
   businessName.required = !isSupportSignup;
   slug.required = !isSupportSignup;
   submitButton.textContent = isSupportSignup ? "Criar conta de suporte" : "Criar conta e negócio";
+  document.getElementById("signupPlanWrap")?.classList.toggle("hidden", isSupportSignup);
+  if (!isSupportSignup) {
+    syncSignupPlanChoice(getSelectedSignupPlan(), false);
+  }
+}
+
+export function syncEntryViewFromUrl(): void {
+  if (state.user) return;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("slug")) return;
+  const appMode = params.get("app");
+  const plan = params.get("plan");
+  if (plan) {
+    syncSignupPlanChoice(plan, false);
+  } else {
+    syncSignupPlanChoice(getSelectedSignupPlan(), false);
+  }
+  if (appMode) {
+    showScreen("loginPage");
+    switchAuthMode(appMode === "signup" ? "signup" : "login");
+    return;
+  }
+  showScreen("landingPage");
 }

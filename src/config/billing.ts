@@ -81,28 +81,40 @@ export function buildRenewalReminderMessage(business: Business): string {
   const name = business.name || "seu negócio";
   const plan = planDisplayLabel(business);
   const price = formatCurrency(getMonthlyPriceForBusiness(business));
+  const due = getPaymentDueDate(business);
+  const dueLine = due && !Number.isNaN(due.getTime()) ? `Vencimento: ${due.toLocaleDateString("pt-BR")}` : "";
   const pixLine = AGENDAFACIL_PIX_KEY
-    ? `Chave PIX (Agenda Fácil): ${AGENDAFACIL_PIX_KEY}`
-    : "Responda esta mensagem para receber a chave PIX da Agenda Fácil.";
+    ? `Chave PIX: ${AGENDAFACIL_PIX_KEY}`
+    : "Chave PIX: ainda não configurada no sistema.";
   const pendenteLines =
     business.billing_status === "pendente"
       ? [
           "",
-          "📌 *Situação:* identificamos sua conta com pagamento *pendente* — ainda *não há confirmação* da renovação no nosso sistema. Use o PIX abaixo e envie o comprovante por aqui.",
+          "📌 *Situação:* identificamos o pagamento como *pendente* no sistema. Se você já realizou o PIX, basta enviar o comprovante por aqui para conferência.",
         ]
       : [];
 
   return [
-    `Olá! Somos da *Agenda Fácil*.`,
+    `Olá! Aqui é da *AgendaFácil* 👋`,
     "",
-    `Lembrete de renovação — *${name}*.`,
+    `Passando para lembrar da renovação mensal da loja *${name}*.`,
+    "",
+    `*Resumo da cobrança*`,
     `Plano: ${plan}`,
-    `Valor mensal: ${price}`,
+    `Valor: ${price}`,
+    dueLine,
     ...pendenteLines,
     "",
+    `*Pagamento via PIX*`,
     pixLine,
     "",
-    `Após o pagamento, envie o comprovante aqui para regularizarmos seu acesso.`,
+    AGENDAFACIL_PIX_KEY
+      ? `Assim que fizer o pagamento, envie o comprovante por aqui para regularizarmos seu acesso sem atraso.`
+      : `Assim que a chave PIX for configurada, esta mensagem já sairá pronta para envio manual.`
+    ,
+    "",
     `Obrigado!`,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }

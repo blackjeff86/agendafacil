@@ -3,12 +3,12 @@ import * as businessService from "../services/businessService";
 import * as supportService from "../services/supportService";
 import { state } from "../state/store";
 import { isSupportAccountEmail, isSupportInternalBusiness, renderSupportBusinesses } from "../ui/render/supportPanel";
-import { applyBodyMode, showLoading, showScreen, showToast } from "../ui/dom";
+import { applyBodyMode, finishInitialBoot, showLoading, showScreen, showToast } from "../ui/dom";
 import { getErrorMessage } from "../utils/errors";
 import { slugify } from "../utils/strings";
 import { createBusinessAndSeed } from "./businessLifecycle";
 import { refreshAllBusinessData } from "./refresh";
-import { switchAuthMode } from "./authUi";
+import { syncEntryViewFromUrl } from "./authUi";
 import { loadPublicData } from "./publicData";
 import { pubGoRaw } from "./publicFlow";
 import { navTo } from "./navigation";
@@ -22,7 +22,7 @@ function getPendingSetup(): Record<string, string> | null {
   }
 }
 
-function getPendingSetupFromMetadata(): { name: string; slug: string; category: string } | null {
+function getPendingSetupFromMetadata(): import("../types").PendingBusinessDraft | null {
   if (isInternalSupportAccount()) {
     return null;
   }
@@ -34,6 +34,8 @@ function getPendingSetupFromMetadata(): { name: string; slug: string; category: 
     name: pending.name,
     slug: slugify(String(pending.slug)),
     category: pending.category || "Salao de Beleza",
+    plan_tier: pending.plan_tier === "pro" ? "pro" : "starter",
+    plan_name: pending.plan_name || (pending.plan_tier === "pro" ? "Plano Pro" : "Plano Starter"),
   };
 }
 
@@ -118,11 +120,10 @@ export async function loadAdminExperience(): Promise<void> {
 }
 
 export async function bootstrapApp(): Promise<void> {
-  showLoading(true);
+    showLoading(true);
   try {
     const params = new URLSearchParams(window.location.search);
     const slug = params.get("slug");
-    const appMode = params.get("app");
     const { session, error } = await authService.getSession();
     if (error) throw error;
 
@@ -146,19 +147,13 @@ export async function bootstrapApp(): Promise<void> {
       return;
     }
 
-    if (appMode) {
-      showScreen("loginPage");
-      if (appMode === "signup") {
-        switchAuthMode("signup");
-      }
-    } else {
-      showScreen("landingPage");
-    }
+    syncEntryViewFromUrl();
   } catch (error) {
     console.error(error);
     showToast(getErrorMessage(error));
     showScreen("landingPage");
   } finally {
+    finishInitialBoot();
     showLoading(false);
   }
 }

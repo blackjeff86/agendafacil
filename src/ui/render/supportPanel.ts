@@ -21,6 +21,41 @@ import type { Business } from "../../types";
 import { emptyStateHtml } from "../components/emptyState";
 import { SUPPORT_ACCOUNT_EMAIL } from "../../config/env";
 
+type RenewalVisualState = {
+  label: string;
+  badgeClass: string;
+  summaryClass: string;
+};
+
+function getRenewalVisualState(business: Business, due?: Date | null): RenewalVisualState {
+  if (!due || Number.isNaN(due.getTime())) {
+    return {
+      label: "Sem vencimento",
+      badgeClass: "support-billing-badge is-undated",
+      summaryClass: "is-undated",
+    };
+  }
+  if (due.getTime() < Date.now()) {
+    return {
+      label: "Atrasado",
+      badgeClass: "support-billing-badge is-overdue",
+      summaryClass: "is-overdue",
+    };
+  }
+  if (isInRenewalWindow(business)) {
+    return {
+      label: "Próximo de vencer",
+      badgeClass: "support-billing-badge is-soon",
+      summaryClass: "is-soon",
+    };
+  }
+  return {
+    label: "Em dia",
+    badgeClass: "support-billing-badge is-current",
+    summaryClass: "is-current",
+  };
+}
+
 export function isSupportAccountEmail(email?: string | null): boolean {
   return String(email || "").trim().toLowerCase() === SUPPORT_ACCOUNT_EMAIL;
 }
@@ -163,41 +198,122 @@ export function renderSupportBusinesses(): void {
 
 export function renderSupportRenewalList(): void {
   const container = document.getElementById("supportRenewalList");
+  const summary = document.getElementById("supportRenewalSummary");
   const pixEl = document.getElementById("supportPixKeyDisplay");
   const daysEl = document.getElementById("supportRenewalWindowDays");
   if (daysEl) daysEl.textContent = String(RENEWAL_REMINDER_WINDOW_DAYS);
   if (pixEl) {
-    pixEl.textContent = AGENDAFACIL_PIX_KEY || "(defina VITE_AGENDAFACIL_PIX_KEY no deploy)";
+    pixEl.textContent = AGENDAFACIL_PIX_KEY || "Chave PIX não configurada";
   }
   if (!container) return;
 
-  const upcoming = state.supportBusinesses
-    .filter((b) => b.active && isInRenewalWindow(b))
+  const activeBusinesses = state.supportBusinesses.filter((b) => b.active);
+  const dated = activeBusinesses
     .map((b) => ({ b, due: getPaymentDueDate(b) }))
-    .filter((row): row is { b: Business; due: Date } => row.due !== null && !Number.isNaN(row.due.getTime()))
-    .sort((a, c) => a.due.getTime() - c.due.getTime());
+    .filter((row): row is { b: Business; due: Date } => row.due !== null && !Number.isNaN(row.due.getTime()));
 
-  container.innerHTML = upcoming.length
-    ? upcoming
-        .map(
-          ({ b, due }) => `
+  const overdue = dated
+    .filter(({ due }) => due.getTime() < Date.now())
+    .sort((a, c) => a.due.getTime() - c.due.getTime());
+  const dueSoon = dated
+    .filter(({ b, due }) => due.getTime() >= Date.now() && isInRenewalWindow(b))
+    .sort((a, c) => a.due.getTime() - c.due.getTime());
+  const later = dated
+    .filter(({ b, due }) => due.getTime() >= Date.now() && !isInRenewalWindow(b))
+    .sort((a, c) => a.due.getTime() - c.due.getTime());
+  const withoutDue = activeBusinesses
+    .filter((b) => !getPaymentDueDate(b))
+    .sort((a, c) => a.name.localeCompare(c.name, "pt-BR"));
+
+  if (summary) {
+    summary.innerHTML = `
+      <div class="support-renewal-pill is-overdue"><strong>${overdue.length}</strong><span>Atrasadas</span></div>
+      <div class="support-renewal-pill is-soon"><strong>${dueSoon.length}</strong><span>Vencendo em até ${RENEWAL_REMINDER_WINDOW_DAYS} dias</span></div>
+      <div class="support-renewal-pill is-current"><strong>${later.length}</strong><span>Em dia</span></div>
+      <div class="support-renewal-pill is-undated"><strong>${withoutDue.length}</strong><span>Sem vencimento definido</span></div>
+    `;
+  }
+
+  const renderCard = ({ b, due }: { b: Business; due: Date }) => {
+    const status = getRenewalVisualState(b, due);
+    const canCharge = Boolean((b.whatsapp || "").trim());
+    return `
           <div class="support-renewal-card">
             <div class="support-renewal-top">
               <div>
                 <div class="font-bold">${escapeHtml(b.name)}</div>
                 <div class="text-sm text-sub">/?slug=${escapeHtml(b.slug)} · ${escapeHtml(b.whatsapp || "sem WhatsApp")}</div>
               </div>
-              <span class="chip">${escapeHtml(planDisplayLabel(b))}</span>
+              <div class="support-renewal-side-tags">
+                <span class="${status.badgeClass}">${status.label}</span>
+                <span class="chip">${escapeHtml(planDisplayLabel(b))}</span>
+              </div>
             </div>
             <div class="support-renewal-meta">
               <div><span class="text-sub">Vencimento</span><strong>${due.toLocaleDateString("pt-BR")}</strong></div>
               <div><span class="text-sub">Valor</span><strong>${formatCurrency(getMonthlyPriceForBusiness(b))}</strong></div>
-              <div><span class="text-sub">Cobrança</span><strong>${formatBillingLabel(b.billing_status)}</strong></div>
+              <div><span class="text-sub">Cobrança</span><strong>${status.label}</strong></div>
             </div>
             <div class="text-sm text-sub mb-2">${escapeHtml(formatSupportTrialSummary(b))}</div>
-            <button class="btn btn-wa btn-sm" style="width:100%;" type="button" onclick="openRenewalReminderWhatsApp('${b.id}')">Enviar lembrete de renovação (WhatsApp)</button>
-          </div>`
-        )
-        .join("")
-    : `<div class="empty-state">Nenhuma loja ativa com vencimento nos próximos ${RENEWAL_REMINDER_WINDOW_DAYS} dias (e nenhum vencimento atrasado nessa janela). Ajuste as datas em “Gerenciar” ou amplie o prazo em VITE_RENEWAL_REMINDER_WINDOW_DAYS.</div>`;
+            <div class="card-actions">
+              <button class="btn btn-wa btn-sm" type="button" onclick="openRenewalReminderWhatsApp('${b.id}')" ${canCharge ? "" : "disabled"}>Realizar cobrança</button>
+              <button class="btn btn-link btn-sm" type="button" onclick="openSupportBusinessModal('${b.id}')">Gerenciar</button>
+              <button class="btn btn-ghost btn-sm" type="button" onclick="openSupportPublicLink('${b.slug}')">Abrir link</button>
+            </div>
+          </div>`;
+  };
+
+  const renderSimpleCard = (b: Business, note: string) => {
+    const status = getRenewalVisualState(b, null);
+    const canCharge = Boolean((b.whatsapp || "").trim());
+    return `
+    <div class="support-renewal-card">
+      <div class="support-renewal-top">
+        <div>
+          <div class="font-bold">${escapeHtml(b.name)}</div>
+          <div class="text-sm text-sub">/?slug=${escapeHtml(b.slug)} · ${escapeHtml(b.whatsapp || "sem WhatsApp")}</div>
+        </div>
+        <div class="support-renewal-side-tags">
+          <span class="${status.badgeClass}">${status.label}</span>
+          <span class="chip">${escapeHtml(planDisplayLabel(b))}</span>
+        </div>
+      </div>
+      <div class="support-renewal-meta support-renewal-meta-single">
+        <div><span class="text-sub">Cobrança</span><strong>${status.label}</strong></div>
+      </div>
+      <div class="text-sm text-sub mb-2">${escapeHtml(note)}</div>
+      <div class="card-actions">
+        <button class="btn btn-wa btn-sm" type="button" onclick="openRenewalReminderWhatsApp('${b.id}')" ${canCharge ? "" : "disabled"}>Realizar cobrança</button>
+        <button class="btn btn-link btn-sm" type="button" onclick="openSupportBusinessModal('${b.id}')">Gerenciar</button>
+        <button class="btn btn-ghost btn-sm" type="button" onclick="openSupportPublicLink('${b.slug}')">Abrir link</button>
+      </div>
+    </div>`;
+  };
+
+  const section = (title: string, subtitle: string, content: string) => `
+    <div class="support-renewal-section">
+      <div class="support-renewal-section-head">
+        <div class="font-semibold">${title}</div>
+        <div class="text-sm text-sub">${subtitle}</div>
+      </div>
+      ${content}
+    </div>`;
+
+  const blocks: string[] = [];
+  if (overdue.length) {
+    blocks.push(section("Atrasadas", "Contas que já passaram do vencimento e precisam de ação imediata.", overdue.map(renderCard).join("")));
+  }
+  if (dueSoon.length) {
+    blocks.push(section("Vencendo em breve", `Contas que vencem hoje ou nos próximos ${RENEWAL_REMINDER_WINDOW_DAYS} dias.`, dueSoon.map(renderCard).join("")));
+  }
+  if (later.length) {
+    blocks.push(section("Em dia", "Contas ativas com vencimento futuro fora da janela imediata.", later.map(renderCard).join("")));
+  }
+  if (withoutDue.length) {
+    blocks.push(section("Sem vencimento definido", "Contas ativas que precisam de revisão manual de data de cobrança.", withoutDue.map((b) => renderSimpleCard(b, "Sem vencimento cadastrado no sistema.")).join("")));
+  }
+
+  container.innerHTML = blocks.length
+    ? blocks.join("")
+    : `<div class="empty-state">Nenhuma loja ativa encontrada para acompanhamento de cobrança no momento.</div>`;
 }

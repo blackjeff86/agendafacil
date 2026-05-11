@@ -3,6 +3,8 @@ import type { Business } from "../types";
 export type PlanTier = "starter" | "pro";
 
 export const TRIAL_DAYS = 7;
+export const STARTER_ACTIVE_PROFESSIONAL_LIMIT = 2;
+export const STARTER_CUSTOMER_LIMIT = 50;
 
 /** Contas antigas sem plan_tier: tratamos como Pro para não bloquear quem já usava o sistema. */
 export function resolvePlanTier(business: Business | null | undefined): PlanTier {
@@ -37,15 +39,27 @@ export function isTrialExpired(business: Business | null | undefined): boolean {
 }
 
 export function maxActiveProfessionals(business: Business | null | undefined): number {
-  return isProPlan(business) ? 99 : 1;
+  return isProPlan(business) ? 99 : STARTER_ACTIVE_PROFESSIONAL_LIMIT;
 }
 
 export function canAccessCustomersModule(business: Business | null | undefined): boolean {
-  return isProPlan(business);
+  return Boolean(business);
 }
 
 export function canAccessReportsModule(business: Business | null | undefined): boolean {
+  return Boolean(business);
+}
+
+export function canUseAutomaticCustomerWhatsApp(business: Business | null | undefined): boolean {
   return isProPlan(business);
+}
+
+export function canUseAutomaticDayBeforeReminders(business: Business | null | undefined): boolean {
+  return isProPlan(business);
+}
+
+export function getCustomerManagementLimit(business: Business | null | undefined): number {
+  return isProPlan(business) ? 999999 : STARTER_CUSTOMER_LIMIT;
 }
 
 export function countActiveProfessionals(professionals: { active: boolean }[]): number {

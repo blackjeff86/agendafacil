@@ -11,6 +11,21 @@ export function formatTime(value: string | undefined | null): string {
   return String(value || "").slice(0, 5);
 }
 
+export function getLocalIsoDate(value: Date = new Date()): string {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function getNextOccurrenceLocalIsoDate(dayOfWeek: number, fromDate: Date = new Date()): string {
+  const target = new Date(fromDate);
+  const currentDow = target.getDay();
+  const diff = (dayOfWeek - currentDow + 7) % 7;
+  target.setDate(target.getDate() + diff);
+  return getLocalIsoDate(target);
+}
+
 export function formatLongDate(date: string): string {
   return new Date(`${date}T12:00:00`).toLocaleDateString("pt-BR", {
     weekday: "long",

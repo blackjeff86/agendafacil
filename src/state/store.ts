@@ -20,7 +20,7 @@ export const STATUS_LABELS: Record<string, { label: string; cls: string }> = {
   confirmado: { label: "Confirmado", cls: "badge-success" },
   pendente: { label: "Pendente", cls: "badge-warning" },
   cancelado: { label: "Cancelado", cls: "badge-danger" },
-  concluido: { label: "Concluido", cls: "badge-brand" },
+  concluido: { label: "Atendido", cls: "badge-brand" },
 };
 
 export interface AppState {
@@ -36,6 +36,8 @@ export interface AppState {
   appointments: AppointmentRow[];
   hours: BusinessHourRow[];
   currentFilter: string;
+  historyFilter: string;
+  selectedDashboardDate: string | null;
   selectedAppointment: AppointmentRow | null;
   editingAppointmentId: string | null;
   editingServiceId: string | null;
@@ -63,6 +65,8 @@ export const state: AppState = {
   appointments: [],
   hours: [],
   currentFilter: "todos",
+  historyFilter: "todos",
+  selectedDashboardDate: null,
   selectedAppointment: null,
   editingAppointmentId: null,
   editingServiceId: null,
@@ -88,6 +92,8 @@ export let bookingState: BookingState = {
   profId: null,
   date: null,
   time: null,
+  secondDate: null,
+  secondTime: null,
 };
 
 export function setBookingState(next: BookingState): void {

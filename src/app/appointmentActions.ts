@@ -1,13 +1,18 @@
 import * as appointmentService from "../services/appointmentService";
-import { sendWhatsAppText } from "../services/whatsappOutbound";
+import { canUseAutomaticCustomerWhatsApp } from "../config/plans";
+import { sendWhatsAppTemplate, sendWhatsAppText } from "../services/whatsappOutbound";
 import { findProfessional, findSeries, findService } from "../state/selectors";
 import { state, STATUS_LABELS } from "../state/store";
-import type { AppointmentRow } from "../types";
+import type { AppointmentRow, AppointmentStatus } from "../types";
 import { formatCurrency, formatLongDate, formatRecurrenceLabel, formatTime } from "../utils/formatters";
 import { getFriendlyAppointmentError, getErrorMessage } from "../utils/errors";
 import {
   buildAppointmentCancellationFromRow,
+  buildAppointmentCancellationTemplateFromRow,
   buildAppointmentConfirmationFromRow,
+  buildAppointmentConfirmationTemplateFromRow,
+  buildAppointmentRescheduledFromRow,
+  buildAppointmentRescheduledTemplateFromRow,
   type AppointmentCancellationKind,
 } from "../utils/whatsappTemplates";
 import { showLoading, showToast, openModal, closeModal as closeModalEl } from "../ui/dom";
@@ -47,6 +52,15 @@ export function openApptDetail(id: string): void {
 
   const detailStatus = document.getElementById("detailStatus");
   if (detailStatus) detailStatus.innerHTML = `<span class="badge ${status.cls}">${status.label}</span>`;
+  const confirmBtn = document.getElementById("detailConfirmBtn") as HTMLButtonElement | null;
+  const doneBtn = document.getElementById("detailDoneBtn") as HTMLButtonElement | null;
+  const cancelBtn = document.getElementById("detailCancelBtn") as HTMLButtonElement | null;
+  if (confirmBtn) {
+    confirmBtn.style.display = appointment.status === "confirmado" || appointment.status === "cancelado" ? "none" : "flex";
+    confirmBtn.textContent = appointment.status === "concluido" ? "Voltar para confirmado" : "Confirmar";
+  }
+  if (doneBtn) doneBtn.style.display = appointment.status === "concluido" || appointment.status === "cancelado" ? "none" : "flex";
+  if (cancelBtn) cancelBtn.style.display = appointment.status === "cancelado" ? "none" : "flex";
 
   const row = document.getElementById("seriesActionRow");
   if (row) row.style.display = series ? "flex" : "none";
@@ -160,6 +174,12 @@ export function resetAppointmentModal(): void {
   t("newApptProfessional", "");
   t("newApptDate", "");
   t("newApptTime", "");
+  const availabilityHint = document.getElementById("apptAvailabilityHint");
+  const availabilityGrid = document.getElementById("apptAvailabilityGrid");
+  const rescheduleNotice = document.getElementById("apptRescheduleNotice");
+  if (availabilityHint) availabilityHint.textContent = "Escolha serviço, profissional e data para ver os horários livres.";
+  if (availabilityGrid) availabilityGrid.innerHTML = "";
+  if (rescheduleNotice) rescheduleNotice.classList.add("hidden");
 }
 
 export function openAppointmentModal(): void {
@@ -188,13 +208,25 @@ export function editAppointmentFromDetail(): void {
   (document.getElementById("newApptTime") as HTMLInputElement).value = formatTime(appointment.appointment_time);
   closeModal("modalApptDetail");
   openModal("modalNovoAppt");
+  const sync = (window as unknown as { syncAppointmentAvailability?: () => Promise<void> }).syncAppointmentAvailability;
+  if (typeof sync === "function") {
+    void sync();
+  }
 }
 
 async function notifyCustomerCancellation(appt: AppointmentRow, kind: AppointmentCancellationKind): Promise<string> {
   const businessName = state.business?.name || "Nosso estabelecimento";
   const svc = findService(appt.service_id);
+  const canAutomate = canUseAutomaticCustomerWhatsApp(state.business);
+  if (canAutomate) {
+    const template = buildAppointmentCancellationTemplateFromRow(appt, businessName, svc?.name || "Serviço");
+    if (template) {
+      const templateResult = await sendWhatsAppTemplate(appt.client_phone, template);
+      if (templateResult.ok) return "Cliente notificado (template WhatsApp).";
+    }
+  }
   const msg = buildAppointmentCancellationFromRow(appt, businessName, svc?.name || "Serviço", kind);
-  const r = await sendWhatsAppText(appt.client_phone, msg);
+  const r = await sendWhatsAppText(appt.client_phone, msg, { preferApi: canAutomate });
   if (r.usedApi && r.ok) return "Cliente notificado (WhatsApp API).";
   if (!r.usedApi && r.ok) return "Abra o WhatsApp para enviar o aviso ao cliente.";
   return "Não foi possível preparar o WhatsApp — confira o telefone do cliente.";
@@ -204,6 +236,20 @@ async function notifyAppointmentConfirmed(appt: AppointmentRow): Promise<string>
   const businessName = state.business?.name || "Nosso estabelecimento";
   const svc = findService(appt.service_id);
   const prof = findProfessional(appt.professional_id);
+  const canAutomate = canUseAutomaticCustomerWhatsApp(state.business);
+  if (canAutomate) {
+    const template = buildAppointmentConfirmationTemplateFromRow(
+      appt,
+      businessName,
+      svc?.name || "Serviço",
+      prof?.name || "",
+      Number(svc?.price ?? 0)
+    );
+    if (template) {
+      const templateResult = await sendWhatsAppTemplate(appt.client_phone, template);
+      if (templateResult.ok) return "Confirmado. Mensagem enviada ao cliente (template WhatsApp).";
+    }
+  }
   const msg = buildAppointmentConfirmationFromRow(
     appt,
     businessName,
@@ -211,28 +257,68 @@ async function notifyAppointmentConfirmed(appt: AppointmentRow): Promise<string>
     prof?.name || "",
     Number(svc?.price ?? 0)
   );
-  const r = await sendWhatsAppText(appt.client_phone, msg);
+  const r = await sendWhatsAppText(appt.client_phone, msg, { preferApi: canAutomate });
   if (r.usedApi && r.ok) return "Confirmado. Mensagem enviada ao cliente (WhatsApp API).";
   if (!r.usedApi && r.ok) return "Confirmado. Abra o WhatsApp para enviar a mensagem ao cliente.";
   return "Confirmado. Não foi possível abrir o WhatsApp — confira o telefone do cliente.";
 }
 
-export async function updateAppointmentStatus(status: string): Promise<void> {
+async function notifyAppointmentRescheduled(appt: AppointmentRow): Promise<string> {
+  const businessName = state.business?.name || "Nosso estabelecimento";
+  const svc = findService(appt.service_id);
+  const prof = findProfessional(appt.professional_id);
+  const canAutomate = canUseAutomaticCustomerWhatsApp(state.business);
+  if (canAutomate) {
+    const template = buildAppointmentRescheduledTemplateFromRow(
+      appt,
+      businessName,
+      svc?.name || "Serviço",
+      prof?.name || "",
+      Number(svc?.price ?? 0)
+    );
+    if (template) {
+      const templateResult = await sendWhatsAppTemplate(appt.client_phone, template);
+      if (templateResult.ok) return "Reagendamento confirmado. Mensagem enviada ao cliente (template WhatsApp).";
+    }
+  }
+  const msg = buildAppointmentRescheduledFromRow(
+    appt,
+    businessName,
+    svc?.name || "Serviço",
+    prof?.name || "",
+    Number(svc?.price ?? 0)
+  );
+  const r = await sendWhatsAppText(appt.client_phone, msg, { preferApi: canAutomate });
+  if (r.usedApi && r.ok) return "Reagendamento confirmado. Mensagem enviada ao cliente (WhatsApp API).";
+  if (!r.usedApi && r.ok) return "Reagendamento salvo. Abra o WhatsApp para avisar o cliente.";
+  return "Reagendamento salvo, mas não foi possível preparar a mensagem ao cliente.";
+}
+
+export async function updateAppointmentStatus(status: AppointmentStatus): Promise<void> {
   if (!state.selectedAppointment) return;
   const previousStatus = state.selectedAppointment.status;
   const snapshot: AppointmentRow = { ...state.selectedAppointment };
+  if (previousStatus === status) {
+    showToast("Esse agendamento já está nesse status.");
+    return;
+  }
   showLoading(true);
   try {
     const { error } = await appointmentService.updateAppointment(state.selectedAppointment.id, { status });
     if (error) throw error;
+    state.selectedAppointment = { ...snapshot, status };
     closeModal("modalApptDetail");
     await refreshAllBusinessData();
     let toastMsg = "Status atualizado com sucesso.";
-    if (status === "confirmado" && previousStatus !== "confirmado") {
+    if (status === "confirmado" && previousStatus === "pendente") {
       toastMsg = await notifyAppointmentConfirmed(snapshot);
+    } else if (status === "confirmado" && previousStatus === "concluido") {
+      toastMsg = "Agendamento voltou para confirmado.";
     } else if (status === "cancelado" && previousStatus !== "cancelado") {
       const note = await notifyCustomerCancellation(snapshot, "status_cancelado");
       toastMsg = `Agendamento cancelado. ${note}`;
+    } else if (status === "concluido" && previousStatus !== "concluido") {
+      toastMsg = "Atendimento marcado como realizado.";
     }
     showToast(toastMsg);
   } catch (error) {
@@ -260,6 +346,23 @@ export async function deleteAppointment(): Promise<void> {
   } finally {
     showLoading(false);
   }
+}
+
+function didAppointmentTimingChange(before: AppointmentRow, after: AppointmentRow): boolean {
+  return (
+    before.appointment_date !== after.appointment_date ||
+    before.appointment_time !== after.appointment_time ||
+    before.service_id !== after.service_id ||
+    String(before.professional_id || "") !== String(after.professional_id || "")
+  );
+}
+
+export function hasAppointmentBeenRescheduled(before: AppointmentRow, after: AppointmentRow): boolean {
+  return didAppointmentTimingChange(before, after);
+}
+
+export async function notifyCustomerAboutReschedule(appt: AppointmentRow): Promise<string> {
+  return notifyAppointmentRescheduled(appt);
 }
 
 export function confirmDeleteAppointment(): void {

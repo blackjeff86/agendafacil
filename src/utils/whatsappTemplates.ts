@@ -1,5 +1,36 @@
-import type { AppointmentRow } from "../types";
+import {
+  WHATSAPP_CANCEL_TEMPLATE_NAME,
+  WHATSAPP_CONFIRM_TEMPLATE_NAME,
+  WHATSAPP_DAYBEFORE_TEMPLATE_NAME,
+  WHATSAPP_RESCHEDULE_TEMPLATE_NAME,
+  WHATSAPP_RENEWAL_TEMPLATE_NAME,
+  WHATSAPP_TEMPLATE_LANG,
+  WHATSAPP_TRIAL_END_TEMPLATE_NAME,
+} from "../config/env";
+import { getMonthlyPriceForBusiness, getPaymentDueDate, planDisplayLabel } from "../config/billing";
+import type { AppointmentRow, Business } from "../types";
 import { formatCurrency, formatLongDate, formatTime } from "./formatters";
+import type { WhatsAppTemplatePayload } from "../services/whatsappOutbound";
+
+const EMOJI_WAVE = "\u{1F44B}";
+const EMOJI_CALENDAR = "\u{1F4C5}";
+const EMOJI_CLOCK = "\u{1F550}";
+const EMOJI_SCISSORS = "\u2702\uFE0F";
+const EMOJI_PERSON = "\u{1F464}";
+const EMOJI_MONEY = "\u{1F4B0}";
+
+function getFirstName(name: string): string {
+  return name.split(/\s+/)[0] || name;
+}
+
+function buildTemplate(name: string, bodyParams: string[]): WhatsAppTemplatePayload | null {
+  if (!name) return null;
+  return {
+    name,
+    languageCode: WHATSAPP_TEMPLATE_LANG || "pt_BR",
+    bodyParams,
+  };
+}
 
 export function buildAppointmentConfirmationMessage(params: {
   clientName: string;
@@ -11,17 +42,17 @@ export function buildAppointmentConfirmationMessage(params: {
   priceLabel: string;
 }): string {
   const { clientName, businessName, serviceName, professionalName, appointmentDate, appointmentTime, priceLabel } = params;
-  const first = clientName.split(/\s+/)[0] || clientName;
+  const first = getFirstName(clientName);
   return [
-    `Olá, ${first}! 👋`,
+    `Olá, ${first}! ${EMOJI_WAVE}`,
     "",
     `Seu agendamento em *${businessName}* foi *confirmado*.`,
     "",
-    `📅 ${formatLongDate(appointmentDate)}`,
-    `🕐 ${formatTime(appointmentTime)}`,
-    `✂️ ${serviceName}`,
-    professionalName && professionalName !== "Sem preferencia" ? `👤 ${professionalName}` : "",
-    `💰 ${priceLabel}`,
+    `${EMOJI_CALENDAR} ${formatLongDate(appointmentDate)}`,
+    `${EMOJI_CLOCK} ${formatTime(appointmentTime)}`,
+    `${EMOJI_SCISSORS} ${serviceName}`,
+    professionalName && professionalName !== "Sem preferencia" ? `${EMOJI_PERSON} ${professionalName}` : "",
+    `${EMOJI_MONEY} ${priceLabel}`,
     "",
     `Qualquer dúvida, responda esta mensagem.`,
   ]
@@ -47,6 +78,28 @@ export function buildAppointmentConfirmationFromRow(
   });
 }
 
+export function buildAppointmentConfirmationTemplateFromRow(
+  appt: AppointmentRow,
+  businessName: string,
+  serviceName: string,
+  professionalName: string,
+  price: number
+): WhatsAppTemplatePayload | null {
+  if (!WHATSAPP_CONFIRM_TEMPLATE_NAME) {
+    return null;
+  }
+  const first = getFirstName(appt.client_name);
+  return buildTemplate(WHATSAPP_CONFIRM_TEMPLATE_NAME, [
+    first,
+    businessName,
+    formatLongDate(appt.appointment_date),
+    formatTime(appt.appointment_time),
+    serviceName || "Serviço",
+    professionalName || "Sem preferência",
+    formatCurrency(price),
+  ]);
+}
+
 /** Lembrete no dia anterior ao agendamento (envio automático via cron + API WhatsApp). */
 export function buildAppointmentDayBeforeReminderMessage(params: {
   clientName: string;
@@ -57,21 +110,100 @@ export function buildAppointmentDayBeforeReminderMessage(params: {
   appointmentTime: string;
 }): string {
   const { clientName, businessName, serviceName, professionalName, appointmentDate, appointmentTime } = params;
-  const first = clientName.split(/\s+/)[0] || clientName;
+  const first = getFirstName(clientName);
   return [
-    `Olá, ${first}! 👋`,
+    `Olá, ${first}! ${EMOJI_WAVE}`,
     "",
     `Lembrete: *amanhã* você tem horário em *${businessName}*.`,
     "",
-    `📅 ${formatLongDate(appointmentDate)}`,
-    `🕐 ${formatTime(appointmentTime)}`,
-    `✂️ ${serviceName}`,
-    professionalName && professionalName !== "Sem preferencia" ? `👤 ${professionalName}` : "",
+    `${EMOJI_CALENDAR} ${formatLongDate(appointmentDate)}`,
+    `${EMOJI_CLOCK} ${formatTime(appointmentTime)}`,
+    `${EMOJI_SCISSORS} ${serviceName}`,
+    professionalName && professionalName !== "Sem preferencia" ? `${EMOJI_PERSON} ${professionalName}` : "",
     "",
     `Te esperamos! Se não puder comparecer, avise com antecedência.`,
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+export function buildAppointmentDayBeforeReminderTemplateFromRow(
+  appt: AppointmentRow,
+  businessName: string,
+  serviceName: string,
+  professionalName: string
+): WhatsAppTemplatePayload | null {
+  return buildTemplate(WHATSAPP_DAYBEFORE_TEMPLATE_NAME, [
+    getFirstName(appt.client_name),
+    businessName,
+    serviceName || "Serviço",
+    formatTime(appt.appointment_time),
+    professionalName || "Sem preferência",
+  ]);
+}
+
+export function buildAppointmentRescheduledMessage(params: {
+  clientName: string;
+  businessName: string;
+  serviceName: string;
+  professionalName: string;
+  appointmentDate: string;
+  appointmentTime: string;
+  priceLabel: string;
+}): string {
+  const { clientName, businessName, serviceName, professionalName, appointmentDate, appointmentTime, priceLabel } = params;
+  const first = getFirstName(clientName);
+  return [
+    `Olá, ${first}! ${EMOJI_WAVE}`,
+    "",
+    `Seu agendamento em *${businessName}* foi *ajustado pelo salão* e já está *confirmado*.`,
+    "",
+    `${EMOJI_CALENDAR} ${formatLongDate(appointmentDate)}`,
+    `${EMOJI_CLOCK} ${formatTime(appointmentTime)}`,
+    `${EMOJI_SCISSORS} ${serviceName}`,
+    professionalName && professionalName !== "Sem preferencia" ? `${EMOJI_PERSON} ${professionalName}` : "",
+    `${EMOJI_MONEY} ${priceLabel}`,
+    "",
+    `Se precisar de algo, responda esta mensagem.`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+export function buildAppointmentRescheduledFromRow(
+  appt: AppointmentRow,
+  businessName: string,
+  serviceName: string,
+  professionalName: string,
+  price: number
+): string {
+  return buildAppointmentRescheduledMessage({
+    clientName: appt.client_name,
+    businessName,
+    serviceName: serviceName || "Serviço",
+    professionalName: professionalName || "",
+    appointmentDate: appt.appointment_date,
+    appointmentTime: appt.appointment_time,
+    priceLabel: formatCurrency(price),
+  });
+}
+
+export function buildAppointmentRescheduledTemplateFromRow(
+  appt: AppointmentRow,
+  businessName: string,
+  serviceName: string,
+  professionalName: string,
+  price: number
+): WhatsAppTemplatePayload | null {
+  return buildTemplate(WHATSAPP_RESCHEDULE_TEMPLATE_NAME, [
+    getFirstName(appt.client_name),
+    businessName,
+    formatLongDate(appt.appointment_date),
+    formatTime(appt.appointment_time),
+    serviceName || "Serviço",
+    professionalName || "Sem preferência",
+    formatCurrency(price),
+  ]);
 }
 
 export type AppointmentCancellationKind = "status_cancelado" | "deleted";
@@ -86,7 +218,7 @@ export function buildAppointmentCancellationMessage(params: {
   kind: AppointmentCancellationKind;
 }): string {
   const { clientName, businessName, serviceName, appointmentDate, appointmentTime, kind } = params;
-  const first = clientName.split(/\s+/)[0] || clientName;
+  const first = getFirstName(clientName);
   const bodyLine =
     kind === "deleted"
       ? "Seu agendamento foi *removido* da nossa agenda."
@@ -97,9 +229,9 @@ export function buildAppointmentCancellationMessage(params: {
     bodyLine,
     "",
     `🏷️ *${businessName}*`,
-    `📅 ${formatLongDate(appointmentDate)}`,
-    `🕐 ${formatTime(appointmentTime)}`,
-    `✂️ ${serviceName}`,
+    `${EMOJI_CALENDAR} ${formatLongDate(appointmentDate)}`,
+    `${EMOJI_CLOCK} ${formatTime(appointmentTime)}`,
+    `${EMOJI_SCISSORS} ${serviceName}`,
     "",
     `Dúvidas ou remarcação, fale conosco por aqui.`,
   ].join("\n");
@@ -119,4 +251,39 @@ export function buildAppointmentCancellationFromRow(
     appointmentTime: appt.appointment_time,
     kind,
   });
+}
+
+export function buildAppointmentCancellationTemplateFromRow(
+  appt: AppointmentRow,
+  businessName: string,
+  serviceName: string
+): WhatsAppTemplatePayload | null {
+  return buildTemplate(WHATSAPP_CANCEL_TEMPLATE_NAME, [
+    getFirstName(appt.client_name),
+    businessName,
+    formatLongDate(appt.appointment_date),
+    formatTime(appt.appointment_time),
+    serviceName || "Serviço",
+  ]);
+}
+
+export function buildRenewalReminderTemplate(business: Business, pixKey: string): WhatsAppTemplatePayload | null {
+  const due = getPaymentDueDate(business);
+  const dueLabel = due && !Number.isNaN(due.getTime()) ? due.toLocaleDateString("pt-BR") : "a combinar";
+  return buildTemplate(WHATSAPP_RENEWAL_TEMPLATE_NAME, [
+    business.name || "Sua loja",
+    planDisplayLabel(business),
+    formatCurrency(getMonthlyPriceForBusiness(business)),
+    dueLabel,
+    pixKey || "Solicite a chave PIX ao suporte",
+  ]);
+}
+
+export function buildTrialEndingPlanChoiceTemplate(business: Business, daysRemainingLabel: string): WhatsAppTemplatePayload | null {
+  return buildTemplate(WHATSAPP_TRIAL_END_TEMPLATE_NAME, [
+    business.name || "sua loja",
+    daysRemainingLabel,
+    "R$ 39,90/mês",
+    "R$ 59,90/mês",
+  ]);
 }

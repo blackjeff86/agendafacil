@@ -8,7 +8,7 @@ import type { LastBookingPayload } from "../types";
 import { emptyStateHtml } from "../ui/components/emptyState";
 import { getPublicAppUrl, showLoading, showScreen, showToast, openModal } from "../ui/dom";
 import { applyPublicData, getFallbackPublic, loadPublicData, resetPublicBookingFlow } from "./publicData";
-import { fillSummary, renderDateScroll, renderPubProfs, renderPubServices } from "../ui/render/publicViews";
+import { fillSummary, renderDateScroll, renderPubProfs, renderPubServices, renderSecondDateScroll } from "../ui/render/publicViews";
 
 export function pubGoRaw(step: number): void {
   document.querySelectorAll("#publicShell .page").forEach((page) => {
@@ -41,6 +41,9 @@ export function pubGoStep(step: number): void {
   }
   if (step === 4) {
     fillSummary();
+    renderSecondDateScroll();
+    const secondGrid = document.getElementById("secondTimeGrid");
+    if (secondGrid) secondGrid.innerHTML = "";
   }
   pubStepHistory.push(step);
   pubGoRaw(step);
@@ -68,6 +71,16 @@ export function startBooking(mode: "service" | "prof"): void {
   pubStepHistory.length = 0;
   pubStepHistory.push(0, 2);
   pubGoRaw(2);
+}
+
+export function startFromServicePreview(serviceId: string): void {
+  startBooking("service");
+  selectService(serviceId);
+}
+
+export function startFromProfessionalPreview(professionalId: string): void {
+  startBooking("prof");
+  selectProf(professionalId);
 }
 
 export function selectService(id: string): void {
@@ -167,13 +180,74 @@ export function selectTime(slot: string): void {
   if (btn) btn.disabled = !bookingState.date || !bookingState.time;
 }
 
+export function selectSecondDate(iso: string): void {
+  setBookingState({ ...bookingState, secondDate: iso, secondTime: null });
+  document.querySelectorAll("#secondDateScroll .date-btn").forEach((button) => button.classList.remove("selected"));
+  const target = Array.from(document.querySelectorAll("#secondDateScroll .date-btn")).find(
+    (button) => button.getAttribute("onclick") === `selectSecondDate('${iso}')`
+  );
+  target?.classList.add("selected");
+  void renderSecondTimeGrid();
+}
+
+export async function renderSecondTimeGrid(): Promise<void> {
+  const container = document.getElementById("secondTimeGrid");
+  if (!container) return;
+  container.innerHTML = `<div class="text-sm text-sub">Carregando horarios...</div>`;
+
+  if (!bookingState.secondDate || !bookingState.serviceId) {
+    container.innerHTML = emptyStateHtml("Escolha a segunda data para ver os horários.");
+    return;
+  }
+
+  const slots = generateTimeSlotsForDate(bookingState.secondDate, state.publicData.hours);
+  const professionalId = bookingState.profId === 0 ? null : (bookingState.profId as string | null);
+  const availability = await Promise.all(
+    slots.map(async (slot) => ({
+      slot,
+      available:
+        bookingState.date !== bookingState.secondDate || bookingState.time !== slot
+          ? state.publicData.business
+            ? await appointmentService.isSlotAvailable({
+                businessId: state.publicData.business.id,
+                serviceId: bookingState.serviceId!,
+                professionalId,
+                date: bookingState.secondDate!,
+                time: slot,
+              })
+            : false
+          : false,
+    }))
+  );
+
+  if (!availability.length) {
+    container.innerHTML = emptyStateHtml("Não há horários disponíveis para a segunda sessão nessa data.");
+    return;
+  }
+
+  container.innerHTML = availability
+    .map(
+      ({ slot, available }) => `
+        <button class="time-btn time-btn-sm" type="button" ${available ? "" : "disabled"} onclick="selectSecondTime('${slot}')">${slot}</button>
+      `
+    )
+    .join("");
+}
+
+export function selectSecondTime(slot: string): void {
+  setBookingState({ ...bookingState, secondTime: slot });
+  document.querySelectorAll("#secondTimeGrid .time-btn").forEach((button) => button.classList.remove("selected"));
+  const target = Array.from(document.querySelectorAll("#secondTimeGrid .time-btn")).find((button) => button.textContent === slot);
+  target?.classList.add("selected");
+}
+
 export async function confirmBooking(): Promise<void> {
   const name = (document.getElementById("clientName") as HTMLInputElement).value.trim();
   const email = (document.getElementById("clientEmail") as HTMLInputElement).value.trim();
   const phone = (document.getElementById("clientPhone") as HTMLInputElement).value.trim();
   const notes = (document.getElementById("clientNotes") as HTMLTextAreaElement).value.trim();
   const recurrenceType = (document.getElementById("clientRecurrenceType") as HTMLSelectElement).value;
-  const recurrenceCount = Number((document.getElementById("clientRecurrenceCount") as HTMLInputElement).value || 1);
+  const recurrencePeriodCount = Number((document.getElementById("clientRecurrenceCount") as HTMLInputElement).value || 1);
   const service = state.publicData.services.find((item) => item.id === bookingState.serviceId);
   const professional =
     bookingState.profId && bookingState.profId !== 0
@@ -185,22 +259,72 @@ export async function confirmBooking(): Promise<void> {
     return;
   }
 
+  const normalizedPeriodCount =
+    recurrenceType === "none"
+      ? 1
+      : Number.isFinite(recurrencePeriodCount) && recurrencePeriodCount > 0
+        ? Math.max(2, Math.floor(recurrencePeriodCount))
+        : 2;
+  const occurrencesToCreate =
+    recurrenceType === "none"
+      ? 1
+      : recurrenceType === "twice_weekly"
+        ? normalizedPeriodCount * 2
+        : normalizedPeriodCount;
+
+  if (recurrenceType === "twice_weekly" && (!bookingState.secondDate || !bookingState.secondTime)) {
+    showToast("Escolha a segunda data e o segundo horário para concluir o agendamento 2x por semana.");
+    return;
+  }
+
   showLoading(true);
   try {
-    const { error } = await appointmentService.createPublicBooking({
-      p_business_id: state.publicData.business.id,
-      p_service_id: service.id,
-      p_professional_id: professional?.id || null,
-      p_client_name: name,
-      p_client_phone: phone,
-      p_client_email: email || null,
-      p_client_notes: notes || null,
-      p_appointment_date: bookingState.date,
-      p_appointment_time: bookingState.time,
-      p_recurrence_type: recurrenceType,
-      p_occurrences: recurrenceType === "none" ? 1 : recurrenceCount,
-    });
-    if (error) throw error;
+    if (recurrenceType === "twice_weekly") {
+      const firstResult = await appointmentService.createPublicBooking({
+        p_business_id: state.publicData.business.id,
+        p_service_id: service.id,
+        p_professional_id: professional?.id || null,
+        p_client_name: name,
+        p_client_phone: phone,
+        p_client_email: email || null,
+        p_client_notes: notes || null,
+        p_appointment_date: bookingState.date,
+        p_appointment_time: bookingState.time,
+        p_recurrence_type: "weekly",
+        p_occurrences: normalizedPeriodCount,
+      });
+      if (firstResult.error) throw firstResult.error;
+
+      const secondResult = await appointmentService.createPublicBooking({
+        p_business_id: state.publicData.business.id,
+        p_service_id: service.id,
+        p_professional_id: professional?.id || null,
+        p_client_name: name,
+        p_client_phone: phone,
+        p_client_email: email || null,
+        p_client_notes: notes || null,
+        p_appointment_date: bookingState.secondDate,
+        p_appointment_time: bookingState.secondTime,
+        p_recurrence_type: "weekly",
+        p_occurrences: normalizedPeriodCount,
+      });
+      if (secondResult.error) throw secondResult.error;
+    } else {
+      const { error } = await appointmentService.createPublicBooking({
+        p_business_id: state.publicData.business.id,
+        p_service_id: service.id,
+        p_professional_id: professional?.id || null,
+        p_client_name: name,
+        p_client_phone: phone,
+        p_client_email: email || null,
+        p_client_notes: notes || null,
+        p_appointment_date: bookingState.date,
+        p_appointment_time: bookingState.time,
+        p_recurrence_type: recurrenceType,
+        p_occurrences: occurrencesToCreate,
+      });
+      if (error) throw error;
+    }
 
     document.querySelectorAll("#publicShell .page").forEach((page) => {
       page.classList.remove("active");
@@ -226,7 +350,7 @@ export async function confirmBooking(): Promise<void> {
       phone,
       notes,
       recurrenceType,
-      recurrenceCount: recurrenceType === "none" ? 1 : recurrenceCount,
+      recurrenceCount: occurrencesToCreate,
       service,
       professional,
       date: formatLongDate(bookingState.date),

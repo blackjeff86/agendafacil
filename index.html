@@ -3,28 +3,170 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>AgendaFácil — Agendamento online para salões e barbearias</title>
+  <title>AgendaFácil — O jeito simples de organizar agendamentos no seu salão</title>
+  <style>
+    body { margin: 0; }
+    .hidden { display: none !important; }
+    #bootSplash {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 14px;
+      background: #f8f7ff;
+      color: #1e1b4b;
+      z-index: 99999;
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    }
+    #bootSplash .boot-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      min-width: 0;
+    }
+    #bootSplash .boot-mark {
+      width: 52px;
+      height: 52px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 18px;
+      background: #ffffff;
+      box-shadow: 0 14px 28px rgba(37, 99, 235, 0.12);
+      border: 1px solid rgba(199, 219, 255, 0.9);
+    }
+    #bootSplash .boot-mark svg {
+      width: 52px;
+      height: 52px;
+      display: block;
+    }
+    #bootSplash .boot-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    #bootSplash strong {
+      font-size: 22px;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      color: #0f172a;
+    }
+    #bootSplash strong span {
+      background: linear-gradient(135deg,#7c3aed 0%,#38bdf8 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    #bootSplash .boot-copy small {
+      font-size: 11px;
+      line-height: 1.35;
+      color: #64748b;
+    }
+    #bootSplash .boot-status {
+      font-size: 13px;
+      color: #6b7280;
+    }
+    body.app-booting #bootSplash {
+      display: flex;
+    }
+    body.app-booting #landingPage,
+    body.app-booting #loginPage,
+    body.app-booting #setupPage,
+    body.app-booting #blockedPage,
+    body.app-booting #adminShell,
+    body.app-booting #publicShell,
+    body.app-booting .toast,
+    body.app-booting .modal-overlay,
+    body.app-booting #loadingOverlay {
+      display: none !important;
+    }
+  </style>
 </head>
-<body>
+<body class="app-booting">
+  <div id="bootSplash" aria-hidden="true">
+    <div class="boot-brand">
+      <span class="boot-mark" aria-hidden="true">
+        <svg viewBox="0 0 64 64" role="img" focusable="false">
+          <defs>
+            <linearGradient id="bootAgendaFacilMark" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#7c3aed"></stop>
+              <stop offset="100%" stop-color="#38bdf8"></stop>
+            </linearGradient>
+          </defs>
+          <rect x="6" y="8" width="52" height="50" rx="16" fill="url(#bootAgendaFacilMark)"></rect>
+          <rect x="16" y="18" width="32" height="24" rx="8" fill="#ffffff" opacity="0.96"></rect>
+          <rect x="16" y="18" width="32" height="8" rx="8" fill="#dbeafe"></rect>
+          <circle cx="24" cy="22" r="2.4" fill="#7c3aed"></circle>
+          <circle cx="40" cy="22" r="2.4" fill="#7c3aed"></circle>
+          <path d="M24 35.5l5.2 5.2L40.5 29.5" fill="none" stroke="#14b8a6" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path d="M47 11l1.5 3.4L52 16l-3.5 1.6L47 21l-1.6-3.4L42 16l3.4-1.6z" fill="#f8fafc" opacity="0.95"></path>
+        </svg>
+      </span>
+      <span class="boot-copy">
+        <strong>Agenda<span>Fácil</span></strong>
+        <small>Agendamentos simples para pequenos salões</small>
+      </span>
+    </div>
+    <span class="boot-status">Carregando...</span>
+  </div>
   <div class="toast" id="toast"></div>
 
   <section id="landingPage" class="hidden landing-page">
+    <header class="landing-topbar">
+      <a href="#landingPage" class="landing-brand" aria-label="AgendaFácil">
+        <span class="landing-brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 64 64" role="img" focusable="false">
+            <defs>
+              <linearGradient id="agendaFacilMark" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#7c3aed"></stop>
+                <stop offset="100%" stop-color="#38bdf8"></stop>
+              </linearGradient>
+            </defs>
+            <rect x="6" y="8" width="52" height="50" rx="16" fill="url(#agendaFacilMark)"></rect>
+            <rect x="16" y="18" width="32" height="24" rx="8" fill="#ffffff" opacity="0.96"></rect>
+            <rect x="16" y="18" width="32" height="8" rx="8" fill="#dbeafe"></rect>
+            <circle cx="24" cy="22" r="2.4" fill="#7c3aed"></circle>
+            <circle cx="40" cy="22" r="2.4" fill="#7c3aed"></circle>
+            <path d="M24 35.5l5.2 5.2L40.5 29.5" fill="none" stroke="#14b8a6" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M47 11l1.5 3.4L52 16l-3.5 1.6L47 21l-1.6-3.4L42 16l3.4-1.6z" fill="#f8fafc" opacity="0.95"></path>
+          </svg>
+        </span>
+        <span class="landing-brand-copy">
+          <strong>Agenda<span>Fácil</span></strong>
+          <small>Agendamentos simples para pequenos salões</small>
+        </span>
+      </a>
+      <nav class="landing-nav" aria-label="Navegação principal">
+        <a href="#landingHow">Como funciona</a>
+        <a href="#landingPricing">Planos</a>
+        <a href="#landingTestimonials">Depoimentos</a>
+      </nav>
+      <button class="btn btn-brand btn-sm landing-topbar-cta" type="button" onclick="openAppEntry('signup', 'starter')">Testar grátis</button>
+    </header>
     <div class="landing-shell">
       <div class="landing-hero">
-        <div class="landing-badge">AgendaFácil</div>
-        <h1>Organize seus agendamentos pelo celular e receba clientes pelo WhatsApp</h1>
+        <div class="landing-badge">Feito para pequenos negócios de beleza</div>
+        <h1>Pare de perder clientes na bagunça do WhatsApp.</h1>
         <p>
-          O Agenda Fácil é o link oficial do seu salão: serviço, profissional e horário escolhidos pelo cliente,
-          com confirmação clara — menos mensagens perdidas e agenda no controle.
+          Com a AgendaFácil, seus clientes agendam online pelo celular, você organiza horários, serviços e profissionais em um só lugar, e o WhatsApp deixa de ser uma bagunça.
         </p>
         <div class="landing-cta">
-          <button class="btn btn-brand" type="button" onclick="openAppEntry('signup')">Começar 7 dias grátis</button>
-          <a class="btn btn-ghost landing-link-btn" href="#landingPricing">Ver planos</a>
+          <button class="btn btn-brand" type="button" onclick="openAppEntry('signup', 'starter')">Testar grátis por 7 dias</button>
+          <a class="btn btn-ghost landing-link-btn" href="#landingHow">Ver como funciona</a>
         </div>
         <div class="landing-proof-strip">
           <span>7 dias grátis</span>
           <span>Sem fidelidade</span>
-          <span>Cancele quando quiser</span>
+          <span>Feito para usar no celular</span>
+        </div>
+        <div class="landing-hero-points">
+          <div class="landing-hero-point">Menos bagunça no WhatsApp</div>
+          <div class="landing-hero-point">Mais clareza dos horários</div>
+          <div class="landing-hero-point">Cliente agendando sozinho</div>
         </div>
       </div>
 
@@ -36,33 +178,67 @@
             <span class="landing-dot"></span>
           </div>
           <div class="landing-phone-screen">
-            <div class="landing-mini-chip">Link de agendamento</div>
-            <div class="landing-showcase-title">Barbearia Central</div>
-            <div class="landing-showcase-text">Clientes escolhem serviço, horário e confirmam sozinhos.</div>
-            <div class="landing-showcase-list">
-              <div class="landing-showcase-item">
-                <strong>Corte + barba</strong>
-                <span>Hoje às 14:00</span>
+            <div class="landing-mini-chip">Página pública de agendamento</div>
+            <div class="landing-showcase-title">Studio da Camila</div>
+            <div class="landing-showcase-text">Seu cliente escolhe serviço, profissional e horário sem depender de ida e volta no WhatsApp.</div>
+            <div class="landing-showcase-surface">
+              <div class="landing-surface-head">
+                <strong>Escolha um serviço</strong>
+                <span>Hoje</span>
               </div>
-              <div class="landing-showcase-item">
-                <strong>Sobrancelha</strong>
-                <span>Hoje às 15:30</span>
+              <div class="landing-showcase-list">
+                <div class="landing-showcase-item">
+                  <strong>Manicure</strong>
+                  <span>40 min · com Carla</span>
+                </div>
+                <div class="landing-showcase-item">
+                  <strong>Escova</strong>
+                  <span>45 min · com Ana</span>
+                </div>
+                <div class="landing-showcase-item active">
+                  <strong>Horário escolhido</strong>
+                  <span>Amanhã às 14:00</span>
+                </div>
               </div>
-              <div class="landing-showcase-item active">
-                <strong>WhatsApp enviado</strong>
-                <span>Link pronto para compartilhar</span>
+            </div>
+            <div class="landing-dashboard-peek">
+              <div class="landing-dashboard-card">
+                <span>Agenda do dia</span>
+                <strong>6 horários confirmados</strong>
+              </div>
+              <div class="landing-dashboard-card">
+                <span>WhatsApp</span>
+                <strong>Link pronto para compartilhar</strong>
               </div>
             </div>
           </div>
         </div>
         <div class="landing-floating-card landing-floating-card-main">
-          <div class="landing-floating-label">Agenda organizada</div>
+          <div class="landing-floating-label">Mais organização</div>
           <div class="landing-floating-value">Sem conflito de horários</div>
         </div>
         <div class="landing-floating-card landing-floating-card-wa">
-          <div class="landing-floating-label">WhatsApp</div>
-          <div class="landing-floating-value">Compartilhe o link em segundos</div>
+          <div class="landing-floating-label">Link pronto</div>
+          <div class="landing-floating-value">Compartilhe no WhatsApp em segundos</div>
         </div>
+      </div>
+    </div>
+
+    <div class="landing-flow-strip">
+      <div class="landing-flow-card">
+        <span>1</span>
+        <strong>Cliente agenda online</strong>
+        <p>Escolhe serviço, profissional e horário direto pelo celular.</p>
+      </div>
+      <div class="landing-flow-card">
+        <span>2</span>
+        <strong>Salão recebe tudo organizado</strong>
+        <p>Os horários entram no painel sem conversa perdida no meio do caminho.</p>
+      </div>
+      <div class="landing-flow-card">
+        <span>3</span>
+        <strong>Rotina mais profissional</strong>
+        <p>Você ganha clareza da agenda e atende com mais confiança.</p>
       </div>
     </div>
 
@@ -73,86 +249,105 @@
       </div>
       <div class="landing-grid">
         <div class="landing-card">
-          <div class="landing-icon">⏰</div>
-          <h3>Clientes esquecem horários</h3>
-          <p>Sem um fluxo claro, a confirmação se perde e o atendimento fica vulnerável a faltas.</p>
+          <div class="landing-icon">💬</div>
+          <h3>Cliente manda mensagem e você só vê horas depois</h3>
+          <p>Quando a correria aperta, a oportunidade esfria e o agendamento se perde.</p>
         </div>
         <div class="landing-card">
-          <div class="landing-icon">💬</div>
-          <h3>Agenda bagunçada no WhatsApp</h3>
-          <p>Mensagens misturadas dificultam responder rápido e acompanhar quem realmente marcou.</p>
+          <div class="landing-icon">🧾</div>
+          <h3>O horário some no meio das conversas</h3>
+          <p>Agenda, atendimento e dúvidas viram a mesma coisa dentro do WhatsApp.</p>
         </div>
         <div class="landing-card">
           <div class="landing-icon">🚫</div>
-          <h3>Risco de horário duplicado</h3>
-          <p>Dois clientes no mesmo horário geram desgaste, atraso e uma experiência ruim para o salão.</p>
+          <h3>Dois clientes acabam no mesmo horário</h3>
+          <p>Uma falha pequena já basta para gerar atraso, desgaste e imagem ruim para o salão.</p>
         </div>
         <div class="landing-card">
-          <div class="landing-icon">👥</div>
-          <h3>Falta de controle da equipe</h3>
-          <p>Sem visão dos profissionais e horários, fica difícil distribuir a agenda e vender melhor.</p>
+          <div class="landing-icon">📲</div>
+          <h3>Você precisa confirmar tudo manualmente</h3>
+          <p>Isso consome tempo, cansa a rotina e prende você em tarefas repetitivas.</p>
         </div>
         <div class="landing-card">
-          <div class="landing-icon">📉</div>
-          <h3>Perda de vendas</h3>
-          <p>Quando o atendimento demora ou depende de ida e volta no chat, muitos clientes desistem.</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="landing-section landing-section-dark">
-      <div class="landing-section-heading">
-        <span class="landing-section-kicker">A solução</span>
-        <h2>O Agenda Fácil organiza o atendimento sem complicar sua rotina</h2>
-      </div>
-      <div class="landing-grid landing-grid-solution">
-        <div class="landing-feature-card">
-          <strong>Página pública de agendamento</strong>
-          <span>Seu cliente escolhe serviço e horário direto pelo celular.</span>
-        </div>
-        <div class="landing-feature-card">
-          <strong>Link compartilhável no WhatsApp</strong>
-          <span>Envie o link em segundos e reduza o vai e vem das mensagens.</span>
-        </div>
-        <div class="landing-feature-card">
-          <strong>Cadastro de serviços</strong>
-          <span>Mostre valores, duração e categorias de forma organizada.</span>
-        </div>
-        <div class="landing-feature-card">
-          <strong>Cadastro de profissionais</strong>
-          <span>Distribua melhor a agenda da equipe e evite conflitos.</span>
-        </div>
-        <div class="landing-feature-card">
-          <strong>Horários de funcionamento</strong>
-          <span>Defina dias e horários disponíveis com clareza.</span>
-        </div>
-        <div class="landing-feature-card">
-          <strong>Painel simples para o lojista</strong>
-          <span>Acompanhe agendamentos, clientes e rotina do salão em um só lugar.</span>
+          <div class="landing-icon">✨</div>
+          <h3>O atendimento parece menos profissional</h3>
+          <p>Quando tudo depende de conversa, o cliente sente menos organização e menos confiança.</p>
         </div>
       </div>
     </div>
 
     <div class="landing-section">
       <div class="landing-section-heading">
+        <span class="landing-section-kicker">A solução</span>
+        <h2>Uma agenda online simples para organizar sua rotina.</h2>
+      </div>
+      <div class="landing-grid landing-grid-solution">
+        <div class="landing-feature-card">
+          <strong>Cliente agenda sozinho</strong>
+          <span>Seu cliente escolhe serviço, profissional e horário direto pelo celular.</span>
+        </div>
+        <div class="landing-feature-card">
+          <strong>Link pronto para WhatsApp</strong>
+          <span>Envie o link em segundos e reduza o vai e vem das mensagens.</span>
+        </div>
+        <div class="landing-feature-card">
+          <strong>Serviços e profissionais organizados</strong>
+          <span>Cadastre o que você oferece e deixe os horários mais claros.</span>
+        </div>
+        <div class="landing-feature-card">
+          <strong>Painel simples para o lojista</strong>
+          <span>Acompanhe a agenda sem precisar aprender um sistema complicado.</span>
+        </div>
+        <div class="landing-feature-card">
+          <strong>Mais clareza dos horários</strong>
+          <span>Evite confusão, duplicidade e perda de tempo no dia a dia.</span>
+        </div>
+        <div class="landing-feature-card">
+          <strong>Mobile-first de verdade</strong>
+          <span>Feito para funcionar bem no celular, onde a rotina do salão realmente acontece.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="landing-section landing-section-contrast">
+      <div class="landing-section-heading">
+        <span class="landing-section-kicker">Diferencial</span>
+        <h2>Feito para pequenos negócios. Não para complicar sua rotina.</h2>
+        <p class="landing-section-copy">
+          Muitos sistemas de agenda são caros, cheios de telas e difíceis de usar no dia a dia.
+          A AgendaFácil foi criada para ser simples, prática e fácil de usar pelo celular.
+        </p>
+      </div>
+      <div class="landing-simple-grid">
+        <div class="landing-simple-card"><strong>Simples de configurar</strong><span>Sem cadastro confuso e sem excesso de etapas.</span></div>
+        <div class="landing-simple-card"><strong>Fácil no celular</strong><span>Você consegue usar com agilidade na rotina real do salão.</span></div>
+        <div class="landing-simple-card"><strong>Pensado para salão pequeno</strong><span>Feito para quem precisa organizar, não para quem quer um ERP pesado.</span></div>
+        <div class="landing-simple-card"><strong>Sem excesso de funções</strong><span>Só o que ajuda a vender, organizar e ganhar tempo no dia a dia.</span></div>
+        <div class="landing-simple-card"><strong>Preço acessível</strong><span>Entrada simples para quem quer profissionalizar o atendimento.</span></div>
+        <div class="landing-simple-card"><strong>Link pronto para compartilhar</strong><span>Envie no WhatsApp e deixe o cliente agendar com mais autonomia.</span></div>
+      </div>
+    </div>
+
+    <div class="landing-section" id="landingHow">
+      <div class="landing-section-heading">
         <span class="landing-section-kicker">Como funciona</span>
-        <h2>Em poucos passos, seu salão já começa a receber agendamentos</h2>
+        <h2>Em poucos passos, seu salão já começa a receber agendamentos.</h2>
       </div>
       <div class="landing-steps">
         <div class="landing-step">
           <div class="landing-step-number">1</div>
           <strong>Cadastre seu salão</strong>
-          <p>Crie sua conta e personalize o nome do negócio.</p>
+          <p>Crie sua conta e deixe seu negócio pronto para começar.</p>
         </div>
         <div class="landing-step">
           <div class="landing-step-number">2</div>
           <strong>Configure serviços, horários e profissionais</strong>
-          <p>Deixe sua agenda pronta para receber clientes sem confusão.</p>
+          <p>Organize a rotina de forma simples e sem excesso de telas.</p>
         </div>
         <div class="landing-step">
           <div class="landing-step-number">3</div>
           <strong>Compartilhe o link com seus clientes</strong>
-          <p>Envie pelo WhatsApp, Instagram ou bio e comece a vender melhor.</p>
+          <p>Envie pelo WhatsApp e comece a receber agendamentos com mais clareza.</p>
         </div>
       </div>
     </div>
@@ -160,72 +355,78 @@
     <div class="landing-section" id="landingPricing">
       <div class="landing-section-heading">
         <span class="landing-section-kicker">Planos e preços</span>
-        <h2>Escolha o plano ideal para organizar seu negócio</h2>
+        <h2>O plano simples para começar com mais organização.</h2>
       </div>
       <div class="landing-pricing-grid">
-        <div class="landing-pricing-card">
+        <div class="landing-pricing-card primary">
+          <div class="landing-pricing-badge landing-pricing-badge-soft">Plano principal</div>
           <div class="landing-pricing-head">
             <h3>Plano Starter</h3>
-            <div class="landing-pricing-price">R$39,90<span>/mês</span></div>
-            <p>Para quem quer sair do papel e organizar a agenda rapidamente.</p>
+            <div class="landing-pricing-price">R$59,90<span>/mês</span></div>
+            <p>O sistema simples que o pequeno salão realmente consegue usar.</p>
           </div>
           <ul class="landing-pricing-list">
             <li>Agendamento online</li>
             <li>Cadastro de serviços</li>
-            <li>Cadastro de profissionais</li>
+            <li>Até 2 profissionais ativos</li>
+            <li>Até 50 clientes visíveis</li>
             <li>Página pública de agendamento</li>
             <li>Link para WhatsApp</li>
-            <li>Painel básico</li>
+            <li>Relatórios resumidos</li>
           </ul>
           <div class="landing-pricing-foot">
             <span>7 dias grátis</span>
             <span>Sem fidelidade</span>
+            <span>Cancele quando quiser</span>
           </div>
-          <button class="btn btn-ghost" type="button" onclick="openAppEntry('signup')">Começar grátis</button>
+          <button class="btn btn-brand" type="button" onclick="openAppEntry('signup', 'starter')">Testar grátis por 7 dias</button>
         </div>
 
         <div class="landing-pricing-card featured">
-          <div class="landing-pricing-badge">Mais recomendado</div>
+          <div class="landing-pricing-badge">Em breve</div>
           <div class="landing-pricing-head">
             <h3>Plano Pro</h3>
-            <div class="landing-pricing-price">R$59,90<span>/mês</span></div>
-            <p>Para salões e barbearias que querem crescer com mais controle e previsibilidade.</p>
+            <div class="landing-pricing-price landing-pricing-price-soon">Em breve</div>
+            <p>Para negócios em crescimento que vão querer mais automação e mais controle.</p>
           </div>
           <ul class="landing-pricing-list">
             <li>Tudo do Starter</li>
             <li>Múltiplos profissionais</li>
-            <li>Gestão de clientes</li>
-            <li>Relatórios</li>
+            <li>Gestão completa de clientes</li>
+            <li>Relatórios completos</li>
             <li>Confirmação de agendamento</li>
             <li>Suporte prioritário</li>
-            <li>Preparado para lembretes automáticos</li>
+            <li>Lembretes automáticos por WhatsApp</li>
           </ul>
           <div class="landing-pricing-foot">
-            <span>7 dias grátis</span>
-            <span>Cancele quando quiser</span>
+            <span>Lançamento em breve</span>
+            <span>Entre na fila de espera</span>
           </div>
-          <button class="btn btn-brand" type="button" onclick="openAppEntry('signup')">Testar por 7 dias</button>
+          <button class="btn btn-brand" type="button" disabled aria-disabled="true" style="opacity:.65;cursor:not-allowed;">Plano Pro em breve</button>
         </div>
       </div>
     </div>
 
-    <div class="landing-section">
+    <div class="landing-section" id="landingTestimonials">
       <div class="landing-section-heading">
         <span class="landing-section-kicker">Prova social</span>
-        <h2>Quem atende pelo celular precisa de um sistema leve e prático</h2>
+        <h2>Quem vive a rotina do salão entende o valor de um sistema simples.</h2>
       </div>
       <div class="landing-testimonials">
         <div class="landing-testimonial-card">
           <p>“Antes eu me perdia nos horários pelo WhatsApp. Agora mando o link e o cliente agenda sozinho.”</p>
           <strong>Rafael, dono de barbearia</strong>
+          <span>Barbearia de bairro · zona norte</span>
         </div>
         <div class="landing-testimonial-card">
-          <p>“Minha rotina ficou muito mais organizada e eu consigo responder os clientes com mais rapidez.”</p>
+          <p>“Eu achava que sistema de agenda era complicado, mas consegui configurar a AgendaFácil pelo celular.”</p>
           <strong>Camila, nail designer</strong>
+          <span>Atendimento com hora marcada</span>
         </div>
         <div class="landing-testimonial-card">
-          <p>“O Agenda Fácil deixou meu salão mais profissional sem complicar o atendimento no dia a dia.”</p>
+          <p>“Meu salão ficou mais organizado e os clientes acharam muito mais profissional.”</p>
           <strong>Patrícia, dona de salão</strong>
+          <span>Salão de beleza · atendimento local</span>
         </div>
       </div>
     </div>
@@ -233,9 +434,9 @@
     <div class="landing-section">
       <div class="landing-final-cta">
         <span class="landing-section-kicker">Comece hoje</span>
-        <h2>Comece hoje a organizar sua agenda e pare de perder clientes.</h2>
-        <p>Crie sua conta, configure seu salão e compartilhe seu link de agendamento pelo WhatsApp.</p>
-        <button class="btn btn-brand" type="button" onclick="openAppEntry('signup')">Testar grátis por 7 dias</button>
+        <h2>Comece hoje a organizar sua agenda sem complicação.</h2>
+        <p>Teste grátis por 7 dias e veja na prática como a AgendaFácil pode deixar sua rotina mais simples.</p>
+        <button class="btn btn-brand" type="button" onclick="openAppEntry('signup', 'starter')">Testar grátis por 7 dias</button>
       </div>
     </div>
   </section>
@@ -248,10 +449,25 @@
     </div>
   </div>
 
-  <section id="loginPage">
+  <section id="loginPage" class="hidden">
     <div class="auth-center-shell">
       <div class="login-card desktop-login-card">
-        <div class="logo-big">✂️</div>
+        <div class="logo-big" aria-hidden="true">
+          <svg viewBox="0 0 64 64" role="img" focusable="false">
+            <defs>
+              <linearGradient id="authBrandMark" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#7c3aed"></stop>
+                <stop offset="100%" stop-color="#38bdf8"></stop>
+              </linearGradient>
+            </defs>
+            <rect x="6" y="8" width="52" height="50" rx="16" fill="url(#authBrandMark)"></rect>
+            <rect x="16" y="18" width="32" height="24" rx="8" fill="#ffffff" opacity="0.96"></rect>
+            <rect x="16" y="18" width="32" height="8" rx="8" fill="#dbeafe"></rect>
+            <circle cx="24" cy="22" r="2.4" fill="#7c3aed"></circle>
+            <circle cx="40" cy="22" r="2.4" fill="#7c3aed"></circle>
+            <path d="M24 35.5l5.2 5.2L40.5 29.5" fill="none" stroke="#14b8a6" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </div>
         <div class="brand-name">AgendaFácil</div>
         <div class="brand-sub">Acesse sua conta ou cadastre o seu salão</div>
         <div class="connection-badge">Conexão segura · seus dados protegidos</div>
@@ -275,6 +491,18 @@
 
         <form id="signupForm" class="stack hidden" onsubmit="event.preventDefault(); doSignup();">
           <div class="signup-business-fields" id="signupBusinessFields">
+            <div class="card card-sm" id="signupPlanWrap" style="margin-bottom:12px;">
+              <div class="font-semibold" style="margin-bottom:6px;">Plano para iniciar o teste</div>
+              <div class="chip" id="signupPlanBadge" style="margin:0 0 8px 0;">Plano Starter · 7 dias grátis</div>
+              <div class="input-group" style="margin-bottom:6px;">
+                <label for="signupPlanTier">Escolha do plano</label>
+                <select id="signupPlanTier" onchange="syncSignupPlanChoice(this.value)">
+                  <option value="starter">Plano Starter · R$ 59,90/mês</option>
+                  <option value="pro" disabled>Plano Pro · Em breve</option>
+                </select>
+              </div>
+              <div class="helper-text" id="signupPlanHint">Você vai começar no trial do Plano Starter e pode fazer upgrade para Pro quando quiser.</div>
+            </div>
             <div class="input-group">
               <label for="signupBusinessName">Nome do negócio</label>
               <input type="text" id="signupBusinessName" placeholder="Ex: Studio Bella" required />
@@ -363,9 +591,33 @@
     <div id="planStatusStrip" class="plan-status-strip hidden" aria-live="polite"></div>
     <div id="pageDashboard" class="page">
       <div class="top-bar">
-        <div>
-          <div style="font-size:13px;color:var(--sub);">Olá, 👋</div>
-          <h2 id="greetingName">Bem-vindo</h2>
+        <div class="app-header-stack">
+          <div class="app-brand-inline" aria-label="AgendaFácil">
+            <span class="app-brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 64 64" role="img" focusable="false">
+                <defs>
+                  <linearGradient id="appBrandMark" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#7c3aed"></stop>
+                    <stop offset="100%" stop-color="#38bdf8"></stop>
+                  </linearGradient>
+                </defs>
+                <rect x="6" y="8" width="52" height="50" rx="16" fill="url(#appBrandMark)"></rect>
+                <rect x="16" y="18" width="32" height="24" rx="8" fill="#ffffff" opacity="0.96"></rect>
+                <rect x="16" y="18" width="32" height="8" rx="8" fill="#dbeafe"></rect>
+                <circle cx="24" cy="22" r="2.4" fill="#7c3aed"></circle>
+                <circle cx="40" cy="22" r="2.4" fill="#7c3aed"></circle>
+                <path d="M24 35.5l5.2 5.2L40.5 29.5" fill="none" stroke="#14b8a6" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </span>
+            <span class="app-brand-copy">
+              <strong>Agenda<span>Fácil</span></strong>
+              <small>Painel simples para pequenos salões</small>
+            </span>
+          </div>
+          <div class="app-greeting-copy">
+            <div class="app-greeting-label">Olá, 👋</div>
+            <h2 id="greetingName">Bem-vindo</h2>
+          </div>
         </div>
         <div class="flex items-center gap-2">
           <button class="btn btn-link btn-sm" type="button" onclick="logout()">Sair</button>
@@ -373,28 +625,38 @@
         </div>
       </div>
       <div class="scroll-area p-4">
-        <div class="section-title">Hoje · <span id="todayDate"></span></div>
-        <div class="stat-grid">
-          <div class="stat-card"><div class="stat-icon">📅</div><div class="stat-val" id="statTodayCount">0</div><div class="stat-label">Agendamentos hoje</div></div>
-          <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-val" id="statRevenue">R$0</div><div class="stat-label">Receita prevista</div></div>
-          <div class="stat-card"><div class="stat-icon">⭐</div><div class="stat-val" id="statTopService">-</div><div class="stat-label">Serviço mais pedido</div></div>
-          <div class="stat-card"><div class="stat-icon">👑</div><div class="stat-val" id="statTopProfessional">-</div><div class="stat-label">Profissional destaque</div></div>
+        <div class="section-title dashboard-title-row">
+          <span><span id="dashboardDatePrefix">Hoje</span> · <span id="todayDate"></span></span>
         </div>
-        <div class="section-title">Próximos agendamentos</div>
-        <div id="dashApptList"></div>
-      </div>
-    </div>
-
-    <div id="pageAgendamentos" class="page">
-      <div class="top-bar">
-        <h2>Agendamentos</h2>
-        <button class="btn btn-sm btn-brand" style="width:auto" type="button" onclick="openAppointmentModal()">+ Novo</button>
-      </div>
-      <div class="scroll-area p-4">
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-icon">📅</div><div class="stat-val" id="statTodayCount">0</div><div class="stat-label" id="statTodayLabel">Agendamentos hoje</div></div>
+          <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-val" id="statRevenue">R$0</div><div class="stat-label">Receita prevista</div></div>
+          <div class="stat-card">
+            <div class="stat-card-meta" id="statTopServiceMeta">R$ 0,00</div>
+            <div class="stat-icon">⭐</div>
+            <div class="stat-val" id="statTopService">-</div>
+            <div class="stat-label">Serviço mais pedido</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-meta" id="statTopProfessionalMeta">0 reservas</div>
+            <div class="stat-icon">👑</div>
+            <div class="stat-val" id="statTopProfessional">-</div>
+            <div class="stat-label">Profissional destaque</div>
+          </div>
+        </div>
+        <div class="dashboard-date-strip-wrap">
+          <div id="dashboardDateStrip" class="date-scroll dashboard-date-scroll"></div>
+          <button class="dashboard-clear-filter hidden" id="clearDashboardDateBtn" type="button" onclick="clearDashboardDateFilter(event)" aria-label="Limpar filtro de data" title="Ver todos os agendamentos">✕</button>
+        </div>
+        <div class="flex justify-between items-center gap-3 mb-3 mt-4">
+          <div class="section-title" style="margin:0;">Agendamentos</div>
+          <button class="btn btn-sm btn-brand" style="width:auto" type="button" onclick="openAppointmentModal()">+ Novo</button>
+        </div>
         <div class="flex gap-2 mb-3">
           <button class="btn btn-brand btn-sm appt-filter-btn" style="flex:1" type="button" data-filter="todos" onclick="filterAppt('todos', event)">Todos</button>
           <button class="btn btn-ghost btn-sm appt-filter-btn" style="flex:1" type="button" data-filter="confirmado" onclick="filterAppt('confirmado', event)">Confirmados</button>
           <button class="btn btn-ghost btn-sm appt-filter-btn" style="flex:1" type="button" data-filter="pendente" onclick="filterAppt('pendente', event)">Pendentes</button>
+          <button class="btn btn-ghost btn-sm appt-filter-btn" style="flex:1" type="button" data-filter="concluido" onclick="filterAppt('concluido', event)">Atendidos</button>
         </div>
         <div id="apptList"></div>
       </div>
@@ -402,7 +664,10 @@
 
     <div id="pageAtendimento" class="page">
       <div class="top-bar">
-        <h2>Atendimento</h2>
+        <div class="app-page-title">
+          <div class="app-page-kicker">AgendaFácil</div>
+          <h2>Atendimento</h2>
+        </div>
       </div>
       <div class="scroll-area p-4">
         <div class="flex justify-between items-center gap-3 mb-3">
@@ -416,7 +681,7 @@
 
         <div class="flex justify-between items-center gap-3 mb-3 mt-4">
           <div class="section-title" style="margin:0;">Equipe disponível</div>
-          <button class="btn btn-sm btn-brand" style="width:auto" type="button" onclick="openProfessionalModal()">+ Profissional</button>
+          <button class="btn btn-sm btn-brand" id="btnAddProfessional" style="width:auto" type="button" onclick="openProfessionalModal()">+ Profissional</button>
         </div>
         <div id="profissionaisPlanHint" class="hidden"></div>
         <div id="profissionaisList"></div>
@@ -425,7 +690,10 @@
 
     <div id="pageClientes" class="page">
       <div class="top-bar">
-        <h2>Clientes</h2>
+        <div class="app-page-title">
+          <div class="app-page-kicker">AgendaFácil</div>
+          <h2>Clientes</h2>
+        </div>
       </div>
       <div class="scroll-area p-4">
         <div id="clientesList"></div>
@@ -433,53 +701,135 @@
     </div>
 
     <div id="pageRelatorios" class="page">
-      <div class="top-bar"><h2>Relatórios</h2></div>
+      <div class="top-bar">
+        <div class="app-page-title">
+          <div class="app-page-kicker">AgendaFácil</div>
+          <h2>Relatórios</h2>
+        </div>
+      </div>
       <div class="scroll-area p-4">
-        <p class="text-sm text-sub mb-3">Resumo do mês corrente (Plano Pro).</p>
+        <p class="text-sm text-sub mb-3" id="reportsSummaryText">Resumo do seu desempenho por dia, semana e mês.</p>
         <div class="stat-grid" style="margin-bottom:16px;">
-          <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-val" id="reportsApptCount">0</div><div class="stat-label">Agendamentos no mês</div></div>
-          <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-val" id="reportsRevenue">R$0</div><div class="stat-label">Receita prevista</div></div>
+          <div class="stat-card"><div class="stat-icon">📅</div><div class="stat-val" id="reportsDayCount">0</div><div class="stat-label">Agendas hoje</div></div>
+          <div class="stat-card"><div class="stat-icon">🗓️</div><div class="stat-val" id="reportsWeekCount">0</div><div class="stat-label">Agendas na semana</div></div>
+          <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-val" id="reportsMonthCount">0</div><div class="stat-label">Agendas no mês</div></div>
+          <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-val" id="reportsMonthRevenue">R$0</div><div class="stat-label">Receita no mês</div></div>
         </div>
         <div class="section-title">Período · <span id="reportsMonthLabel"></span></div>
-        <p class="text-sm text-sub mt-2">Em breve: exportação e comparativos entre meses.</p>
+        <div class="card card-sm" style="margin-top:12px;">
+          <div class="font-semibold" style="margin-bottom:12px;">Receita por período</div>
+          <div id="reportsRevenueChart"></div>
+        </div>
+        <p class="text-sm text-sub mt-2" id="reportsFooterText">Starter mostra visão resumida. No Pro você pode evoluir para mais automações e gestão completa.</p>
+        <div class="section-title" style="margin-top:18px;">Histórico</div>
+        <div class="flex gap-2 mb-3" style="align-items:center;">
+          <button class="btn btn-brand btn-sm appt-history-filter-btn" style="flex:1" type="button" data-filter="todos" onclick="filterApptHistory('todos', event)">Todos</button>
+          <button class="btn btn-ghost btn-sm appt-history-filter-btn" style="flex:1" type="button" data-filter="confirmado" onclick="filterApptHistory('confirmado', event)">Confirmados</button>
+          <button class="btn btn-ghost btn-sm appt-history-filter-btn" style="flex:1" type="button" data-filter="pendente" onclick="filterApptHistory('pendente', event)">Pendentes</button>
+          <button class="btn btn-ghost btn-sm appt-history-filter-btn" style="flex:1" type="button" data-filter="cancelado" onclick="filterApptHistory('cancelado', event)">Cancelados</button>
+        </div>
+        <div id="apptHistoryList"></div>
       </div>
     </div>
 
     <div id="pageMeuNegocio" class="page">
-      <div class="top-bar"><h2>Meu Negócio</h2></div>
+      <div class="top-bar">
+        <div class="app-page-title">
+          <div class="app-page-kicker">AgendaFácil</div>
+          <h2>Meu Negócio</h2>
+        </div>
+      </div>
       <div class="scroll-area p-4">
         <div class="biz-cover" id="bizCoverPreview"><div class="biz-avatar" id="bizAvatarPreview">✂️</div></div>
-        <div class="section-title" style="margin-top:8px;">Informações</div>
-        <div class="card">
-          <div class="input-group"><label for="businessName">Nome do Negócio</label><input type="text" id="businessName" /></div>
-          <div class="input-group"><label for="businessSlug">Slug público</label><input type="text" id="businessSlug" /></div>
-          <div class="input-group"><label for="businessCategory">Categoria</label>
-            <select id="businessCategory">
-              <option>Barbearia</option>
-              <option>Salão de Beleza</option>
-              <option>Manicure e Pedicure</option>
-              <option>Clínica Estética</option>
-            </select>
+        <details class="biz-accordion" open>
+          <summary class="biz-accordion-summary">
+            <div>
+              <div class="biz-accordion-kicker">Seção</div>
+              <div class="biz-accordion-title">Informações</div>
+            </div>
+            <span class="biz-accordion-icon" aria-hidden="true">⌄</span>
+          </summary>
+          <div class="biz-accordion-body">
+            <div class="card">
+              <div class="input-group"><label for="businessName">Nome do Negócio</label><input type="text" id="businessName" /></div>
+              <div class="input-group"><label for="businessSlug">Slug público</label><input type="text" id="businessSlug" /></div>
+              <div class="input-group"><label for="businessCategory">Categoria</label>
+                <select id="businessCategory">
+                  <option>Barbearia</option>
+                  <option>Salão de Beleza</option>
+                  <option>Manicure e Pedicure</option>
+                  <option>Clínica Estética</option>
+                </select>
+              </div>
+              <div class="input-group"><label for="businessDescription">Descrição</label><textarea id="businessDescription"></textarea></div>
+              <div class="input-group"><label for="businessWhatsapp">WhatsApp</label><input type="tel" id="businessWhatsapp" inputmode="numeric" maxlength="15" data-br-phone="true" placeholder="(11) 99999-0000" /></div>
+              <div class="input-group"><label for="businessInstagram">Instagram</label><input type="text" id="businessInstagram" /></div>
+              <div class="input-group"><label for="businessAddress">Endereço</label><input type="text" id="businessAddress" /></div>
+              <div class="input-group"><label for="businessLogoFile">Logo do salão</label><input type="file" id="businessLogoFile" accept="image/*" onchange="handleBusinessLogoUpload(event)" /></div>
+              <div class="input-group"><label for="businessCoverFile">Foto de capa</label><input type="file" id="businessCoverFile" accept="image/*" onchange="handleBusinessCoverUpload(event)" /></div>
+              <div class="input-group"><label for="businessLogoEmoji">Emoji/Logo</label><input type="text" id="businessLogoEmoji" maxlength="4" /></div>
+            </div>
           </div>
-          <div class="input-group"><label for="businessDescription">Descrição</label><textarea id="businessDescription"></textarea></div>
-          <div class="input-group"><label for="businessWhatsapp">WhatsApp</label><input type="tel" id="businessWhatsapp" inputmode="numeric" maxlength="15" data-br-phone="true" placeholder="(11) 99999-0000" /></div>
-          <div class="input-group"><label for="businessInstagram">Instagram</label><input type="text" id="businessInstagram" /></div>
-          <div class="input-group"><label for="businessAddress">Endereço</label><input type="text" id="businessAddress" /></div>
-          <div class="input-group"><label for="businessLogoFile">Logo do salão</label><input type="file" id="businessLogoFile" accept="image/*" onchange="handleBusinessLogoUpload(event)" /></div>
-          <div class="input-group"><label for="businessCoverFile">Foto de capa</label><input type="file" id="businessCoverFile" accept="image/*" onchange="handleBusinessCoverUpload(event)" /></div>
-          <div class="input-group"><label for="businessLogoEmoji">Emoji/Logo</label><input type="text" id="businessLogoEmoji" maxlength="4" /></div>
-        </div>
-        <div class="section-title">Horários de Funcionamento</div>
-        <div class="card">
-          <div id="horariosList"></div>
-        </div>
+        </details>
+        <details class="biz-accordion">
+          <summary class="biz-accordion-summary">
+            <div>
+              <div class="biz-accordion-kicker">Seção</div>
+              <div class="biz-accordion-title">Equipe disponível</div>
+            </div>
+            <span class="biz-accordion-icon" aria-hidden="true">⌄</span>
+          </summary>
+          <div class="biz-accordion-body">
+            <div id="profissionaisPlanHintBusiness" class="hidden"></div>
+            <div id="profissionaisNegocioList"></div>
+          </div>
+        </details>
+        <details class="biz-accordion">
+          <summary class="biz-accordion-summary">
+            <div>
+              <div class="biz-accordion-kicker">Seção</div>
+              <div class="biz-accordion-title">Horários de funcionamento</div>
+            </div>
+            <span class="biz-accordion-icon" aria-hidden="true">⌄</span>
+          </summary>
+          <div class="biz-accordion-body">
+            <div class="card">
+              <div id="horariosList"></div>
+            </div>
+          </div>
+        </details>
         <button class="btn btn-brand" type="button" onclick="saveBusinessProfile()">Salvar Alterações</button>
-        <button class="btn btn-ghost mt-2" type="button" onclick="logout()">Sair</button>
+        <button class="btn btn-ghost mt-2" type="button" onclick="cancelBusinessProfileEdits()">Cancelar</button>
+        <details class="biz-accordion mt-3">
+          <summary class="biz-accordion-summary">
+            <div>
+              <div class="biz-accordion-kicker">Ajuda</div>
+              <div class="biz-accordion-title">Suporte AgendaFácil</div>
+            </div>
+            <span class="biz-accordion-icon" aria-hidden="true">⌄</span>
+          </summary>
+          <div class="biz-accordion-body">
+            <div class="support-footer-card">
+              <div class="support-footer-kicker">Suporte AgendaFácil</div>
+              <div class="support-footer-title">Precisa de ajuda com seu painel?</div>
+              <p class="support-footer-copy">Fale com nosso suporte pelo WhatsApp para tirar dúvidas, pedir ajuda na configuração ou resolver qualquer questão do seu salão.</p>
+              <button class="support-footer-action" type="button" onclick="openSupportWhatsApp()">
+                <span>💬</span>
+                <span>Fale com um dos nossos especialistas</span>
+              </button>
+            </div>
+          </div>
+        </details>
       </div>
     </div>
 
     <div id="pageLinkAgendamento" class="page">
-      <div class="top-bar"><h2>Link de Agendamento</h2></div>
+      <div class="top-bar">
+        <div class="app-page-title">
+          <div class="app-page-kicker">AgendaFácil</div>
+          <h2>Link de Agendamento</h2>
+        </div>
+      </div>
       <div class="scroll-area p-4">
         <div class="card text-center" style="padding:24px;">
           <div style="font-size:48px;margin-bottom:12px;">🔗</div>
@@ -500,10 +850,6 @@
       <button class="nav-item active" data-page="pageDashboard" type="button" onclick="navTo('pageDashboard')">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
         Início
-      </button>
-      <button class="nav-item" data-page="pageAgendamentos" type="button" onclick="navTo('pageAgendamentos')">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        Agenda
       </button>
       <button class="nav-item" data-page="pageAtendimento" type="button" onclick="navTo('pageAtendimento')">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/></svg>
@@ -615,12 +961,11 @@
 
         <div id="supportPanelRenovacoes" class="hidden">
           <div class="card support-renewal-intro">
-            <div class="font-semibold mb-2">Lojas com vencimento próximo (PIX)</div>
-            <p class="text-sm text-sub">Listamos contas <strong>ativas</strong> cujo trial ou próxima mensalidade vence em até <strong id="supportRenewalWindowDays">7</strong> dias, ou já está atrasado nessa janela.</p>
-            <p class="text-sm text-sub mt-2">Chave PIX da plataforma (mensagem automática): <strong id="supportPixKeyDisplay" class="support-pix-inline">—</strong></p>
-            <p class="text-xs text-sub mt-2">Defina <code class="text-xs">VITE_AGENDAFACIL_PIX_KEY</code> no deploy. Opcional: <code class="text-xs">VITE_RENEWAL_REMINDER_WINDOW_DAYS</code>.</p>
-            <p class="text-sm text-sub mt-3">Envio em massa (sem abrir várias abas) exige backend com a API do WhatsApp — veja <code class="text-xs">VITE_WHATSAPP_EDGE_URL</code> no <code class="text-xs">.env.example</code>.</p>
-            <button class="btn btn-outline btn-sm mt-2" type="button" onclick="supportBatchRenewalWhatsapp()">Enviar lembretes PIX (todos da lista via API)</button>
+            <div class="font-semibold mb-2">Cobrança e renovações via PIX</div>
+            <p class="text-sm text-sub">Acompanhe a carteira inteira com foco no que precisa de ação primeiro: atrasos, vencimentos próximos e contas ativas fora da janela imediata.</p>
+            <p class="text-sm text-sub mt-2">Janela de atenção atual: <strong id="supportRenewalWindowDays">7</strong> dias.</p>
+            <p class="text-sm text-sub mt-2">Chave PIX usada nas mensagens automáticas: <strong id="supportPixKeyDisplay" class="support-pix-inline">—</strong></p>
+            <div class="support-renewal-summary" id="supportRenewalSummary"></div>
           </div>
           <div id="supportRenewalList"></div>
         </div>
@@ -679,7 +1024,7 @@
       </div>
       <div class="progress-bar"><div class="progress-fill" style="width:25%"></div></div>
       <div class="scroll-area p-4" id="pubServiceList"></div>
-      <div class="p-4" style="padding-top:0;">
+      <div class="p-4 pub-step-footer" style="padding-top:0;">
         <button class="btn btn-brand" id="btnNextFromService" type="button" onclick="goNextFromService()" disabled>Continuar</button>
       </div>
     </div>
@@ -692,7 +1037,7 @@
       </div>
       <div class="progress-bar"><div class="progress-fill" style="width:50%"></div></div>
       <div class="scroll-area p-4" id="pubProfList"></div>
-      <div class="p-4" style="padding-top:0;">
+      <div class="p-4 pub-step-footer" style="padding-top:0;">
         <button class="btn btn-brand" id="btnNextFromProf" type="button" onclick="goNextFromProf()" disabled>Continuar</button>
       </div>
     </div>
@@ -710,7 +1055,7 @@
         <div class="section-title">Horários disponíveis</div>
         <div class="time-grid" id="timeGrid"></div>
       </div>
-      <div class="p-4" style="padding-top:0;">
+      <div class="p-4 pub-step-footer" style="padding-top:0;">
         <button class="btn btn-brand" id="btnNextFromDateTime" type="button" onclick="pubGoStep(4)" disabled>Continuar</button>
       </div>
     </div>
@@ -746,13 +1091,20 @@
             </select>
           </div>
           <div class="input-group hidden" id="clientRecurrenceCountGroup">
-            <label for="clientRecurrenceCount">Quantas ocorrências</label>
+            <label for="clientRecurrenceCount" id="clientRecurrenceCountLabel">Por quantas semanas?</label>
             <input type="number" id="clientRecurrenceCount" min="2" max="24" step="1" value="4" />
+            <div class="helper-text" id="clientRecurrenceCountHint">Ex.: 4 semanas = 4 agendamentos, um por semana.</div>
+          </div>
+          <div class="card mt-3 hidden" id="clientSecondWeeklyGroup" style="padding:16px 14px;">
+            <div class="section-title" style="margin-bottom:10px;">2º horário da semana</div>
+            <div class="helper-text" style="margin-bottom:14px;">Escolha a segunda data e o segundo horário para completar o agendamento 2x por semana.</div>
+            <div class="date-scroll" id="secondDateScroll"></div>
+            <div class="time-grid" id="secondTimeGrid"></div>
           </div>
           <div class="input-group"><label for="clientNotes">Observações (opcional)</label><textarea id="clientNotes" placeholder="Ex: corte mais baixo nas laterais."></textarea></div>
         </div>
       </div>
-      <div class="p-4" style="padding-top:0;">
+      <div class="p-4 pub-step-footer" style="padding-top:0;">
         <button class="btn btn-brand" type="button" onclick="confirmBooking()">Confirmar Agendamento</button>
       </div>
     </div>
@@ -775,8 +1127,50 @@
           <span class="value" style="color:#fff;" id="successDateTime">—</span>
         </div>
       </div>
-      <button class="btn btn-wa" style="max-width:360px;" type="button" onclick="sendWAConfirmation()">Ver mensagem de confirmação</button>
-      <button style="background:none;border:2px solid rgba(255,255,255,.5);border-radius:12px;color:#fff;padding:14px 20px;font-size:15px;font-weight:600;cursor:pointer;width:100%;max-width:360px;margin-top:12px;" type="button" onclick="showPublicBooking()">Fazer novo agendamento</button>
+      <div class="success-actions">
+        <button style="background:none;border:2px solid rgba(255,255,255,.5);border-radius:12px;color:#fff;padding:14px 20px;font-size:15px;font-weight:600;cursor:pointer;width:100%;max-width:360px;" type="button" onclick="showPublicBooking()">Fazer novo agendamento</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalHourFreeze">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="font-bold text-lg mb-2" id="hourFreezeModalTitle">Pausar agenda</div>
+      <div class="text-sm text-sub mb-4" id="hourFreezeModalSubtitle">Escolha quando a agenda deve parar de aceitar novos agendamentos.</div>
+
+      <div class="freeze-option-list">
+        <label class="freeze-option-card">
+          <input type="radio" name="hourFreezeMode" id="hourFreezeModeNow" value="now" checked onchange="syncHourFreezeMode('now')" />
+          <div class="freeze-option-copy">
+            <strong id="hourFreezeNowLabel">Pausar a partir de agora</strong>
+            <span id="hourFreezeNowPreview">Bloquear novos agendamentos a partir do horário atual.</span>
+          </div>
+        </label>
+
+        <label class="freeze-option-card">
+          <input type="radio" name="hourFreezeMode" value="specific" onchange="syncHourFreezeMode('specific')" />
+          <div class="freeze-option-copy">
+            <strong>Definir horário específico</strong>
+            <span>Escolha a partir de que hora a agenda ficará indisponível.</span>
+          </div>
+        </label>
+      </div>
+
+      <div class="input-group hidden" id="hourFreezeSpecificGroup">
+        <label for="hourFreezeSpecificTime">Pausar a partir de</label>
+        <input type="time" id="hourFreezeSpecificTime" />
+        <div class="helper-text" id="hourFreezeSpecificHint">Escolha o horário em que a agenda deve parar de aceitar novos agendamentos.</div>
+      </div>
+
+      <div class="input-group">
+        <label for="hourFreezeUntilTime">Até que horas? <span class="text-sub">(opcional)</span></label>
+        <input type="time" id="hourFreezeUntilTime" />
+        <div class="helper-text">Se não definir um horário final, a pausa ficará ativa até você liberar manualmente esse dia.</div>
+      </div>
+
+      <button class="btn btn-brand mt-2" type="button" onclick="confirmHourFreeze()">Confirmar pausa</button>
+      <button class="btn btn-ghost mt-2" type="button" onclick="closeHourFreezeModal()">Cancelar</button>
     </div>
   </div>
 
@@ -786,10 +1180,20 @@
       <div class="font-bold text-lg mb-4" id="apptModalTitle">Novo Agendamento</div>
       <div class="input-group"><label for="newApptClient">Cliente</label><input type="text" id="newApptClient" placeholder="Nome do cliente" /></div>
       <div class="input-group"><label for="newApptPhone">Telefone/WhatsApp</label><input type="tel" id="newApptPhone" placeholder="(11) 99999-0000" inputmode="numeric" maxlength="15" data-br-phone="true" /></div>
-      <div class="input-group"><label for="newApptService">Serviço</label><select id="newApptService"></select></div>
-      <div class="input-group"><label for="newApptProfessional">Profissional</label><select id="newApptProfessional"></select></div>
-      <div class="input-group"><label for="newApptDate">Data</label><input type="date" id="newApptDate" /></div>
-      <div class="input-group"><label for="newApptTime">Horário</label><input type="time" id="newApptTime" /></div>
+      <div class="input-group"><label for="newApptService">Serviço</label><select id="newApptService" onchange="syncAppointmentAvailability()"></select></div>
+      <div class="input-group"><label for="newApptProfessional">Profissional</label><select id="newApptProfessional" onchange="syncAppointmentAvailability()"></select></div>
+      <div class="appt-modal-grid">
+        <div class="input-group"><label for="newApptDate">Data</label><input type="date" id="newApptDate" onchange="syncAppointmentAvailability()" /></div>
+        <div class="input-group"><label for="newApptTime">Horário</label><input type="time" id="newApptTime" onchange="syncAppointmentTimeInput()" /></div>
+      </div>
+      <div class="appt-availability-box" id="apptAvailabilityBox">
+        <div class="appt-availability-head">
+          <div class="appt-availability-title">Horários disponíveis</div>
+          <div class="appt-availability-sub" id="apptAvailabilityHint">Escolha serviço, profissional e data para ver os horários livres.</div>
+        </div>
+        <div class="appt-availability-grid" id="apptAvailabilityGrid"></div>
+      </div>
+      <div class="appt-reschedule-note hidden" id="apptRescheduleNotice">Se o salão alterar serviço, data, horário ou profissional, o cliente será avisado automaticamente no WhatsApp.</div>
       <button class="btn btn-brand mt-2" id="apptModalSaveBtn" type="button" onclick="saveAppointment()">Salvar Agendamento</button>
       <button class="btn btn-ghost mt-2" type="button" onclick="closeAppointmentModal()">Cancelar</button>
     </div>
@@ -801,18 +1205,50 @@
       <div class="font-bold text-lg mb-4" id="serviceModalTitle">Novo Serviço</div>
       <div class="input-group"><label for="newServiceName">Nome do serviço</label><input type="text" id="newServiceName" placeholder="Ex: Escova modelada" /></div>
       <div class="input-group"><label for="newServiceDescription">Descrição</label><textarea id="newServiceDescription" placeholder="Descreva o serviço"></textarea></div>
-      <div class="input-group"><label for="newServiceCategory">Categoria</label><select id="newServiceCategory"><option>Corte</option><option>Barba</option><option>Coloração</option><option>Tratamento</option><option>Combo</option></select></div>
+      <div class="input-group">
+        <div class="flex items-center justify-between gap-3 mb-2">
+          <label for="newServiceCategory" style="margin:0;">Categoria</label>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="openServiceCategoryManager()">Gerenciar categorias</button>
+        </div>
+        <input type="text" id="newServiceCategory" list="serviceCategoryOptions" placeholder="Escolha ou digite uma nova categoria" />
+        <datalist id="serviceCategoryOptions"></datalist>
+        <div class="text-xs text-sub mt-1">Você pode escolher uma categoria existente ou digitar uma nova.</div>
+      </div>
       <div class="flex gap-3">
         <div class="input-group" style="flex:1;"><label for="newServicePrice">Preço (R$)</label><input type="number" id="newServicePrice" min="0" step="0.01" placeholder="0,00" /></div>
         <div class="input-group" style="flex:1;"><label for="newServiceDuration">Duração (min)</label><input type="number" id="newServiceDuration" min="5" step="5" placeholder="60" /></div>
       </div>
-      <div class="input-group"><label for="newServiceIcon">Emoji/Ícone</label><input type="text" id="newServiceIcon" placeholder="✂️" maxlength="4" /></div>
+      <input type="hidden" id="newServiceIcon" />
+      <div class="input-group">
+        <label for="serviceIconLibrary">Ícone do serviço</label>
+        <div class="service-icon-picker">
+          <div class="service-icon-picker-preview">
+            <div class="service-icon service-icon-preview" id="newServiceIconPreview">✨</div>
+            <div>
+              <div class="font-semibold">Escolha um ícone</div>
+              <div class="text-xs text-sub" id="serviceIconLibraryHint">Biblioteca única de ícones para serviços de beleza e estética.</div>
+            </div>
+          </div>
+          <div class="service-icon-library" id="serviceIconLibrary"></div>
+        </div>
+      </div>
       <div class="flex items-center gap-3 mb-4">
         <label class="font-semibold text-sm" for="newServiceActive">Ativo</label>
         <label class="toggle"><input type="checkbox" id="newServiceActive" checked /><span class="toggle-slider"></span></label>
       </div>
       <button class="btn btn-brand" id="serviceModalSaveBtn" type="button" onclick="saveService()">Salvar Serviço</button>
       <button class="btn btn-ghost mt-2" type="button" onclick="closeServiceModal()">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalServiceCategories">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="font-bold text-lg mb-2">Gerenciar categorias</div>
+      <div class="text-sm text-sub mb-4">Renomeie ou exclua categorias já usadas nos seus serviços. Para criar uma nova, basta digitá-la ao cadastrar o serviço.</div>
+      <div id="serviceCategoryManagerList" class="category-manager-list"></div>
+      <div id="serviceCategoryManagerEmpty" class="text-sm text-sub" style="display:none;">Nenhuma categoria usada ainda.</div>
+      <button class="btn btn-brand mt-4" type="button" onclick="closeServiceCategoryManager()">Fechar</button>
     </div>
   </div>
 
@@ -824,6 +1260,42 @@
       <div class="input-group"><label for="newProfRole">Especialidade / Cargo</label><input type="text" id="newProfRole" placeholder="Ex: Nail designer" /></div>
       <div class="input-group"><label for="newProfEmoji">Emoji</label><input type="text" id="newProfEmoji" placeholder="👤" maxlength="4" /></div>
       <div class="input-group"><label for="newProfServices">Serviços realizados</label><select id="newProfServices" multiple style="height:120px;"></select></div>
+      <div class="card card-sm" style="margin-bottom:16px;">
+        <div class="font-semibold mb-3">Disponibilidade da profissional</div>
+        <div class="input-group">
+          <label for="newProfDayOffWeekday">Dia fixo de folga</label>
+          <select id="newProfDayOffWeekday">
+            <option value="">Sem folga fixa</option>
+            <option value="0">Domingo</option>
+            <option value="1">Segunda</option>
+            <option value="2">Terça</option>
+            <option value="3">Quarta</option>
+            <option value="4">Quinta</option>
+            <option value="5">Sexta</option>
+            <option value="6">Sábado</option>
+          </select>
+        </div>
+        <div class="flex gap-3">
+          <div class="input-group" style="flex:1;">
+            <label for="newProfVacationStart">Férias: início</label>
+            <input type="date" id="newProfVacationStart" />
+          </div>
+          <div class="input-group" style="flex:1;">
+            <label for="newProfVacationEnd">Férias: fim</label>
+            <input type="date" id="newProfVacationEnd" />
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <div class="input-group" style="flex:1;">
+            <label for="newProfLunchStart">Almoço: início</label>
+            <input type="time" id="newProfLunchStart" />
+          </div>
+          <div class="input-group" style="flex:1;">
+            <label for="newProfLunchEnd">Almoço: fim</label>
+            <input type="time" id="newProfLunchEnd" />
+          </div>
+        </div>
+      </div>
       <div class="flex items-center gap-3 mb-4">
         <label class="font-semibold text-sm" for="newProfActive">Ativo</label>
         <label class="toggle"><input type="checkbox" id="newProfActive" checked /><span class="toggle-slider"></span></label>
@@ -849,15 +1321,16 @@
         <div class="summary-row"><span class="label">Status</span><span id="detailStatus">—</span></div>
       </div>
       <div class="flex gap-2">
-        <button class="btn btn-link flex-1" type="button" onclick="editAppointmentFromDetail()">Editar</button>
-        <button class="btn btn-success flex-1" type="button" onclick="updateAppointmentStatus('confirmado')">Confirmar</button>
-        <button class="btn btn-danger flex-1" type="button" onclick="updateAppointmentStatus('cancelado')">Cancelar</button>
+        <button class="btn btn-link flex-1" type="button" onclick="editAppointmentFromDetail()">Editar / reagendar</button>
+        <button class="btn btn-success flex-1" id="detailConfirmBtn" type="button" onclick="updateAppointmentStatus('confirmado')">Confirmar</button>
+        <button class="btn btn-brand flex-1" id="detailDoneBtn" type="button" onclick="updateAppointmentStatus('concluido')">Atendimento realizado</button>
+        <button class="btn btn-danger flex-1" id="detailCancelBtn" type="button" onclick="updateAppointmentStatus('cancelado')">Cancelar</button>
       </div>
       <div class="flex gap-2 mt-2" id="seriesActionRow" style="display:none;">
         <button class="btn btn-link flex-1" type="button" onclick="openSeriesEditModal()">Editar recorrência</button>
         <button class="btn btn-danger flex-1" type="button" onclick="deleteCurrentSeries()">Excluir recorrência</button>
       </div>
-      <button class="btn btn-danger mt-2" type="button" onclick="confirmDeleteAppointment()">Excluir Agendamento</button>
+      <button class="btn btn-link btn-sm mt-2" style="margin-left:auto;" type="button" onclick="confirmDeleteAppointment()">Excluir agendamento</button>
       <button class="btn btn-ghost mt-2" type="button" onclick="closeModal('modalApptDetail')">Fechar</button>
     </div>
   </div>

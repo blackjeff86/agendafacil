@@ -1,7 +1,9 @@
 /**
  * Edge Function: proxy seguro para WhatsApp Cloud API (Meta).
  *
- * Recebe POST JSON: { "phone": "5511999999999 ou (11) 99999-9999", "text": "mensagem" }
+ * Recebe POST JSON:
+ * - { "phone": "5511999999999 ou (11) 99999-9999", "text": "mensagem" }
+ * - { "phone": "5511999999999 ou (11) 99999-9999", "template": { "name": "template_name", "languageCode": "pt_BR", "bodyParams": ["..."] } }
  * Headers:
  *   Authorization: Bearer <SUPABASE_ANON_KEY ou SERVICE_ROLE>  (exigido pelo gateway Supabase)
  *   x-agenda-facil-proxy-secret: <WHATSAPP_EDGE_AUTH_TOKEN>      (opcional; recomendado em produção)
@@ -69,7 +71,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
     );
   }
 
-  let payload: { phone?: string; text?: string };
+  let payload: {
+    phone?: string;
+    text?: string;
+    template?: {
+      name?: string;
+      languageCode?: string;
+      bodyParams?: string[];
+    };
+  };
   try {
     payload = await req.json();
   } catch {
@@ -78,14 +88,45 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const phone = payload.phone?.trim();
   const text = payload.text?.trim();
-  if (!phone || !text) {
-    return jsonResponse({ error: "Fields phone and text are required" }, 400);
+  const template = payload.template;
+  if (!phone || (!text && !template?.name)) {
+    return jsonResponse({ error: "Field phone and either text or template.name are required" }, 400);
   }
 
   const to = normalizeWhatsAppTo(phone);
   if (to.length < 12) {
     return jsonResponse({ error: "Invalid phone number" }, 400);
   }
+
+  const metaPayload = template?.name
+    ? {
+        messaging_product: "whatsapp",
+        to,
+        type: "template",
+        template: {
+          name: template.name,
+          language: { code: template.languageCode?.trim() || "pt_BR" },
+          ...(template.bodyParams?.length
+            ? {
+                components: [
+                  {
+                    type: "body",
+                    parameters: template.bodyParams.map((value) => ({
+                      type: "text",
+                      text: String(value ?? ""),
+                    })),
+                  },
+                ],
+              }
+            : {}),
+        },
+      }
+    : {
+        messaging_product: "whatsapp",
+        to,
+        type: "text",
+        text: { preview_url: false, body: text },
+      };
 
   const url = `https://graph.facebook.com/${META_API_VERSION}/${phoneNumberId}/messages`;
   const metaRes = await fetch(url, {
@@ -94,12 +135,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      to,
-      type: "text",
-      text: { preview_url: false, body: text },
-    }),
+    body: JSON.stringify(metaPayload),
   });
 
   const metaBody = await metaRes.json().catch(() => ({}));

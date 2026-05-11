@@ -1,5 +1,6 @@
 import { getSupabase } from "../lib/supabase";
 import type { Business, BusinessHourRow, ProfessionalRow, ServiceRow } from "../types";
+import { normalizeBusinessHourRows } from "../utils/businessHours";
 
 export interface PublicBundle {
   business: Business;
@@ -48,6 +49,6 @@ export async function loadPublicWorkspaceBySlug(slug: string): Promise<PublicBun
     business,
     services: (servicesResult.data ?? []) as ServiceRow[],
     professionals,
-    hours: (hoursResult.data ?? []) as BusinessHourRow[],
+    hours: normalizeBusinessHourRows((hoursResult.data ?? []) as BusinessHourRow[]),
   };
 }

@@ -1,7 +1,7 @@
 import { getAppBaseUrl } from "../config/env";
 import * as authService from "../services/authService";
 import { isSupportAccountEmail } from "../ui/render/supportPanel";
-import { switchAuthMode } from "./authUi";
+import { normalizeSignupPlan, syncEntryViewFromUrl, switchAuthMode } from "./authUi";
 import { state } from "../state/store";
 import { applyBodyMode, showLoading, showScreen, showToast } from "../ui/dom";
 import { getErrorMessage } from "../utils/errors";
@@ -9,10 +9,22 @@ import { slugify } from "../utils/strings";
 import { loadAdminExperience } from "./bootstrap";
 import { createBusinessAndSeed } from "./businessLifecycle";
 
-export function openAppEntry(mode: "signup" | "login"): void {
-  const base = getAppBaseUrl();
-  const target = mode === "signup" ? `${base}/?app=signup` : `${base}/?app=login`;
-  window.location.href = target;
+function planNameFromTier(planTier: "starter" | "pro"): "Plano Starter" | "Plano Pro" {
+  return planTier === "pro" ? "Plano Pro" : "Plano Starter";
+}
+
+export function openAppEntry(mode: "signup" | "login", plan?: "starter" | "pro"): void {
+  const url = new URL(window.location.href || getAppBaseUrl());
+  url.searchParams.delete("slug");
+  url.searchParams.set("app", mode);
+  if (mode === "signup") {
+    const chosenPlan = normalizeSignupPlan(plan);
+    url.searchParams.set("plan", chosenPlan);
+  } else {
+    url.searchParams.delete("plan");
+  }
+  window.history.pushState({ app: mode }, "", url);
+  syncEntryViewFromUrl();
 }
 
 export async function doLogin(): Promise<void> {
@@ -44,8 +56,13 @@ export async function doSignup(): Promise<void> {
     name: (document.getElementById("signupBusinessName") as HTMLInputElement).value.trim(),
     slug: slugify((document.getElementById("signupSlug") as HTMLInputElement).value.trim()),
     category: (document.getElementById("signupCategory") as HTMLSelectElement).value,
+    plan_tier: normalizeSignupPlan((document.getElementById("signupPlanTier") as HTMLSelectElement | null)?.value),
     email: (document.getElementById("signupEmail") as HTMLInputElement).value.trim(),
     password: (document.getElementById("signupPass") as HTMLInputElement).value.trim(),
+  };
+  const businessDraft = {
+    ...draft,
+    plan_name: planNameFromTier(draft.plan_tier),
   };
 
   if ((!isSupportSignup && (!draft.name || !draft.slug)) || !draft.email || !draft.password) {
@@ -58,7 +75,7 @@ export async function doSignup(): Promise<void> {
     if (isSupportSignup) {
       localStorage.removeItem("agendafacil_pending_setup");
     } else {
-      localStorage.setItem("agendafacil_pending_setup", JSON.stringify(draft));
+      localStorage.setItem("agendafacil_pending_setup", JSON.stringify(businessDraft));
     }
     const { data, error } = await authService.signUp(draft.email, draft.password, {
       data: isSupportSignup
@@ -68,6 +85,8 @@ export async function doSignup(): Promise<void> {
               name: draft.name,
               slug: draft.slug,
               category: draft.category,
+              plan_tier: draft.plan_tier,
+              plan_name: planNameFromTier(draft.plan_tier),
             },
           },
     });
@@ -77,7 +96,7 @@ export async function doSignup(): Promise<void> {
       state.session = data.session;
       state.user = data.user;
       if (!isSupportSignup) {
-        await createBusinessAndSeed(draft);
+        await createBusinessAndSeed(businessDraft);
       }
       await loadAdminExperience();
       return;

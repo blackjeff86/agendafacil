@@ -11,6 +11,14 @@
 import { createClient } from "@supabase/supabase-js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
+function getTemplateNameFromEnv(): string {
+  return (process.env.WHATSAPP_DAYBEFORE_TEMPLATE_NAME || process.env.VITE_WHATSAPP_DAYBEFORE_TEMPLATE_NAME || "").trim();
+}
+
+function getTemplateLangFromEnv(): string {
+  return (process.env.WHATSAPP_TEMPLATE_LANG || process.env.VITE_WHATSAPP_TEMPLATE_LANG || "pt_BR").trim();
+}
+
 function todayIsoSaoPaulo(): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Sao_Paulo",
@@ -74,6 +82,10 @@ function isSupabaseEdgeFunctionUrl(url: string): boolean {
 }
 
 async function postWhatsAppEdge(phone: string, text: string): Promise<boolean> {
+  return postWhatsAppEdgePayload({ phone, text });
+}
+
+async function postWhatsAppEdgePayload(payload: unknown): Promise<boolean> {
   const edgeUrl = (process.env.WHATSAPP_EDGE_URL || "").trim();
   if (!edgeUrl) return false;
   const proxySecret = (process.env.WHATSAPP_EDGE_TOKEN || "").trim();
@@ -89,7 +101,7 @@ async function postWhatsAppEdge(phone: string, text: string): Promise<boolean> {
   const res = await fetch(edgeUrl, {
     method: "POST",
     headers,
-    body: JSON.stringify({ phone, text }),
+    body: JSON.stringify(payload),
   });
   return res.ok;
 }
@@ -147,23 +159,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   for (const a of list) {
     try {
       const [{ data: biz }, { data: svc }, profResult] = await Promise.all([
-        supabase.from("businesses").select("name").eq("id", a.business_id).maybeSingle(),
+        supabase.from("businesses").select("name, plan_tier").eq("id", a.business_id).maybeSingle(),
         supabase.from("services").select("name").eq("id", a.service_id).maybeSingle(),
         a.professional_id
           ? supabase.from("professionals").select("name").eq("id", a.professional_id).maybeSingle()
           : Promise.resolve({ data: null }),
       ]);
 
-      const text = buildReminderMessage({
-        clientName: a.client_name,
-        businessName: (biz as { name?: string } | null)?.name || "Seu salão",
-        serviceName: (svc as { name?: string } | null)?.name || "Serviço",
-        professionalName: (profResult.data as { name?: string } | null)?.name || "",
-        appointmentDate: a.appointment_date,
-        appointmentTime: a.appointment_time,
-      });
+      if ((biz as { plan_tier?: string | null } | null)?.plan_tier !== "pro") {
+        continue;
+      }
 
-      const ok = await postWhatsAppEdge(a.client_phone, text);
+      const businessName = (biz as { name?: string } | null)?.name || "Seu salão";
+      const serviceName = (svc as { name?: string } | null)?.name || "Serviço";
+      const professionalName = (profResult.data as { name?: string } | null)?.name || "";
+
+      const templateName = getTemplateNameFromEnv();
+      const ok = templateName
+        ? await postWhatsAppEdgePayload({
+            phone: a.client_phone,
+            template: {
+              name: templateName,
+              languageCode: getTemplateLangFromEnv(),
+              bodyParams: [
+                a.client_name.split(/\s+/)[0] || a.client_name,
+                businessName,
+                serviceName,
+                formatTimeHm(a.appointment_time),
+                professionalName || "Sem preferência",
+              ],
+            },
+          })
+        : await postWhatsAppEdge(
+            a.client_phone,
+            buildReminderMessage({
+              clientName: a.client_name,
+              businessName,
+              serviceName,
+              professionalName,
+              appointmentDate: a.appointment_date,
+              appointmentTime: a.appointment_time,
+            })
+          );
       if (ok) {
         await supabase.from("appointments").update({ reminder_sent_at: new Date().toISOString() }).eq("id", a.id);
         sent += 1;

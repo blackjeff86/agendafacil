@@ -1,5 +1,5 @@
 import { canAccessCustomersModule, canAccessReportsModule } from "../config/plans";
-import { renderApptList } from "../ui/render/merchantDashboard";
+import { renderApptHistoryList, renderApptList, renderDashboard } from "../ui/render/merchantDashboard";
 import { renderReportsPage } from "../ui/render/planStrip";
 import { state } from "../state/store";
 import { showToast } from "../ui/dom";
@@ -36,5 +36,40 @@ export function filterAppt(filter: string, event?: Event): void {
   if (event?.target instanceof HTMLElement) {
     event.target.blur();
   }
+  renderDashboard();
   renderApptList(filter);
+  renderReportsPage();
+}
+
+export function selectDashboardDate(date: string, event?: Event): void {
+  state.selectedDashboardDate = date;
+  if (event?.target instanceof HTMLElement) {
+    event.target.blur();
+  }
+  renderDashboard();
+  renderApptList(state.currentFilter);
+  renderReportsPage();
+}
+
+export function clearDashboardDateFilter(event?: Event): void {
+  state.selectedDashboardDate = null;
+  if (event?.target instanceof HTMLElement) {
+    event.target.blur();
+  }
+  renderDashboard();
+  renderApptList(state.currentFilter);
+  renderReportsPage();
+}
+
+export function filterApptHistory(filter: string, event?: Event): void {
+  state.historyFilter = filter;
+  document.querySelectorAll(".appt-history-filter-btn").forEach((button) => {
+    const el = button as HTMLElement;
+    el.classList.toggle("btn-brand", el.dataset.filter === filter);
+    el.classList.toggle("btn-ghost", el.dataset.filter !== filter);
+  });
+  if (event?.target instanceof HTMLElement) {
+    event.target.blur();
+  }
+  renderApptHistoryList(filter);
 }

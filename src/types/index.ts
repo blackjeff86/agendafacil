@@ -48,6 +48,11 @@ export interface ProfessionalRow {
   role?: string | null;
   emoji?: string | null;
   active: boolean;
+  day_off_weekday?: number | null;
+  vacation_start?: string | null;
+  vacation_end?: string | null;
+  lunch_start?: string | null;
+  lunch_end?: string | null;
   created_at?: string;
   serviceIds?: string[];
   serviceNames?: string[];
@@ -105,6 +110,10 @@ export interface BusinessHourRow {
   open_time?: string | null;
   close_time?: string | null;
   active: boolean;
+  frozen?: boolean;
+  frozen_date?: string | null;
+  frozen_time?: string | null;
+  frozen_until_time?: string | null;
 }
 
 export interface SupportEventRow {
@@ -134,6 +143,11 @@ export interface ProfessionalDraft {
   emoji: string;
   active: boolean;
   serviceNames: string[];
+  day_off_weekday?: number | null;
+  vacation_start?: string | null;
+  vacation_end?: string | null;
+  lunch_start?: string | null;
+  lunch_end?: string | null;
 }
 
 export interface BusinessHourDraft {
@@ -142,12 +156,17 @@ export interface BusinessHourDraft {
   open_time: string | null;
   close_time: string | null;
   active: boolean;
+  frozen?: boolean;
+  frozen_date?: string | null;
+  frozen_time?: string | null;
+  frozen_until_time?: string | null;
 }
 
 export interface PendingBusinessDraft {
   name: string;
   slug: string;
   category: string;
+  plan_tier?: "starter" | "pro";
   email?: string;
   password?: string;
   description?: string;
@@ -174,6 +193,8 @@ export interface BookingState {
   profId: string | number | null;
   date: string | null;
   time: string | null;
+  secondDate?: string | null;
+  secondTime?: string | null;
 }
 
 export interface LastBookingPayload {

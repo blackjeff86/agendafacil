@@ -22,3 +22,21 @@ export async function listServiceIdNameForBusiness(businessId: string): Promise<
   if (error) throw error;
   return (data ?? []) as { id: string; name: string }[];
 }
+
+export async function updateServicesCategory(businessId: string, oldCategory: string, newCategory: string) {
+  const { error } = await getSupabase()
+    .from("services")
+    .update({ category: newCategory })
+    .eq("business_id", businessId)
+    .eq("category", oldCategory);
+  if (error) throw error;
+}
+
+export async function clearServicesCategory(businessId: string, category: string) {
+  const { error } = await getSupabase()
+    .from("services")
+    .update({ category: null })
+    .eq("business_id", businessId)
+    .eq("category", category);
+  if (error) throw error;
+}

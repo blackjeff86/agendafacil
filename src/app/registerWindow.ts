@@ -1,28 +1,36 @@
 import { openModal as openModalOverlay } from "../ui/dom";
 import * as appointment from "./appointmentActions";
 import * as auth from "./authActions";
-import { switchAuthMode } from "./authUi";
+import { switchAuthMode, syncSignupPlanChoice } from "./authUi";
 import * as merchant from "./merchantActions";
-import { filterAppt, navTo } from "./navigation";
+import { clearDashboardDateFilter, filterAppt, filterApptHistory, navTo, selectDashboardDate } from "./navigation";
 import { confirmPlanUpgradeToPro, openPlanUpgradeModal } from "./planActions";
 import * as pub from "./publicFlow";
 import { toggleRecurrenceFields } from "./publicData";
 import { renderSupportBusinesses } from "../ui/render/supportPanel";
+import { openCustomerWhatsApp, openSupportWhatsApp, renderCustomers, toggleCustomerVipFilter } from "../ui/render/merchantDashboard";
 import * as support from "./supportUiActions";
 
 export function registerWindowActions(): void {
   const w = window as unknown as Record<string, unknown>;
   Object.assign(w, {
     switchAuthMode,
+    syncSignupPlanChoice,
     openAppEntry: auth.openAppEntry,
     showPublicBooking: pub.showPublicBooking,
     completeInitialSetup: auth.completeInitialSetup,
     logout: auth.logout,
     navTo,
     filterAppt,
+    filterApptHistory,
+    selectDashboardDate,
+    clearDashboardDateFilter,
     openApptDetail: appointment.openApptDetail,
     updateAppointmentStatus: appointment.updateAppointmentStatus,
     saveAppointment: merchant.saveAppointment,
+    syncAppointmentAvailability: merchant.syncAppointmentAvailability,
+    syncAppointmentTimeInput: merchant.syncAppointmentTimeInput,
+    selectAppointmentTime: merchant.selectAppointmentTime,
     openAppointmentModal: appointment.openAppointmentModal,
     closeAppointmentModal: appointment.closeAppointmentModal,
     editAppointmentFromDetail: appointment.editAppointmentFromDetail,
@@ -32,11 +40,16 @@ export function registerWindowActions(): void {
     saveSeriesEdit: appointment.saveSeriesEdit,
     deleteCurrentSeries: appointment.deleteCurrentSeries,
     saveService: merchant.saveService,
+    selectServiceIcon: merchant.selectServiceIcon,
     saveProfessional: merchant.saveProfessional,
     openServiceModal: merchant.openServiceModal,
     closeServiceModal: merchant.closeServiceModal,
     editService: merchant.editService,
     toggleServiceActive: merchant.toggleServiceActive,
+    openServiceCategoryManager: merchant.openServiceCategoryManager,
+    closeServiceCategoryManager: merchant.closeServiceCategoryManager,
+    renameServiceCategory: merchant.renameServiceCategory,
+    deleteServiceCategory: merchant.deleteServiceCategory,
     openProfessionalModal: merchant.openProfessionalModal,
     closeProfessionalModal: merchant.closeProfessionalModal,
     editProfessional: merchant.editProfessional,
@@ -44,12 +57,16 @@ export function registerWindowActions(): void {
     pubBack: pub.pubBack,
     pubGoStep: pub.pubGoStep,
     startBooking: pub.startBooking,
+    startFromServicePreview: pub.startFromServicePreview,
+    startFromProfessionalPreview: pub.startFromProfessionalPreview,
     goNextFromService: pub.goNextFromService,
     goNextFromProf: pub.goNextFromProf,
     selectService: pub.selectService,
     selectProf: pub.selectProf,
     selectDate: pub.selectDate,
     selectTime: pub.selectTime,
+    selectSecondDate: pub.selectSecondDate,
+    selectSecondTime: pub.selectSecondTime,
     confirmBooking: pub.confirmBooking,
     sendWAConfirmation: pub.sendWAConfirmation,
     copyWAMsg: pub.copyWAMsg,
@@ -64,6 +81,10 @@ export function registerWindowActions(): void {
     toggleCardMenu: merchant.toggleCardMenu,
     closeConfirmActionModal: appointment.closeConfirmActionModal,
     renderSupportBusinesses,
+    filterCustomers: renderCustomers,
+    toggleCustomerVipFilter,
+    openCustomerWhatsApp,
+    openSupportWhatsApp,
     openSupportBusinessModal: support.openSupportBusinessModal,
     saveSupportBusiness: support.saveSupportBusiness,
     sendSupportPasswordReset: support.sendSupportPasswordReset,
@@ -82,11 +103,16 @@ export function registerWindowActions(): void {
     openModal: openModalOverlay,
     closeModal: appointment.closeModal,
     toggleHourInputs: merchant.toggleHourInputs,
+    toggleHourFrozen: merchant.toggleHourFrozen,
+    syncHourFreezeMode: merchant.syncHourFreezeMode,
+    confirmHourFreeze: merchant.confirmHourFreeze,
+    closeHourFreezeModal: merchant.closeHourFreezeModal,
     doLogin: auth.doLogin,
     doSignup: auth.doSignup,
     openPlanUpgradeModal,
     confirmPlanUpgradeToPro,
     saveBusinessProfile: merchant.saveBusinessProfile,
+    cancelBusinessProfileEdits: merchant.cancelBusinessProfileEdits,
     runPendingConfirmAction: appointment.runPendingConfirmAction,
   });
 }

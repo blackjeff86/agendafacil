@@ -1,7 +1,7 @@
 import { formatBrazilPhone } from "../utils/phone";
 import { slugify } from "../utils/strings";
 import { runPendingConfirmAction } from "./appointmentActions";
-import { switchAuthMode, syncSignupFormMode } from "./authUi";
+import { switchAuthMode, syncEntryViewFromUrl, syncSignupFormMode } from "./authUi";
 import { showPublicBooking } from "./publicFlow";
 
 export function initStaticSetup(): void {
@@ -48,7 +48,12 @@ export function initStaticSetup(): void {
   document.querySelectorAll(".modal-overlay").forEach((modal) => {
     modal.addEventListener("click", (event) => {
       if (event.target === modal) {
-        modal.classList.remove("open");
+        const appWindow = window as unknown as { closeHourFreezeModal?: () => void };
+        if ((modal as HTMLElement).id === "modalHourFreeze" && typeof appWindow.closeHourFreezeModal === "function") {
+          appWindow.closeHourFreezeModal();
+        } else {
+          modal.classList.remove("open");
+        }
       }
     });
   });
@@ -60,6 +65,10 @@ export function initStaticSetup(): void {
         menu.classList.remove("open");
       }
     });
+  });
+
+  window.addEventListener("popstate", () => {
+    syncEntryViewFromUrl();
   });
 
   syncSignupFormMode();

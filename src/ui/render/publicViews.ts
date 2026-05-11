@@ -43,7 +43,7 @@ export function renderPublicLanding(): void {
       ? services
           .map(
             (service) => `
-            <div class="service-card" style="cursor:default;">
+            <div class="service-card" onclick="startFromServicePreview('${service.id}')">
               <div class="service-icon">${service.icon || "✂️"}</div>
               <div style="flex:1;">
                 <div class="font-semibold">${service.name}</div>
@@ -65,7 +65,7 @@ export function renderPublicLanding(): void {
       ? professionals
           .map(
             (professional) => `
-            <div class="prof-card" style="cursor:default;">
+            <div class="prof-card" onclick="startFromProfessionalPreview('${professional.id}')">
               <div class="avatar">${professional.emoji || "👤"}</div>
               <div>
                 <div class="font-bold">${professional.name}</div>
@@ -154,6 +154,28 @@ export function renderDateScroll(): void {
     `);
   }
   const el = document.getElementById("dateScroll");
+  if (el) el.innerHTML = list.join("");
+}
+
+export function renderSecondDateScroll(): void {
+  const list: string[] = [];
+  const labels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
+  const primaryDate = bookingState.date ? new Date(`${bookingState.date}T12:00:00`) : new Date();
+  const base = new Date(primaryDate);
+  base.setDate(primaryDate.getDate() + 1);
+
+  for (let index = 0; index < 14; index += 1) {
+    const date = new Date(base);
+    date.setDate(base.getDate() + index);
+    const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    list.push(`
+      <button class="date-btn date-btn-sm" type="button" onclick="selectSecondDate('${iso}')">
+        <span style="font-size:10px;">${labels[date.getDay()]}</span>
+        <span class="day-num">${date.getDate()}</span>
+      </button>
+    `);
+  }
+  const el = document.getElementById("secondDateScroll");
   if (el) el.innerHTML = list.join("");
 }
 

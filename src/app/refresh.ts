@@ -4,7 +4,7 @@ import { renderAdmin } from "../ui/render/merchantDashboard";
 
 export async function refreshAllBusinessData(): Promise<void> {
   if (!state.business) return;
-  const bundle = await loadWorkspaceForBusiness(state.business.id);
+  const bundle = await loadWorkspaceForBusiness(state.business.id, { business: state.business });
   state.services = bundle.services;
   state.professionals = bundle.professionals;
   state.customers = bundle.customers;

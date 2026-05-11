@@ -23,11 +23,23 @@ Checklist do que ainda falta **fora do código** (deploy, credenciais, SQL) para
 
 ## Meta + Supabase Edge (WhatsApp API)
 
-- [ ] Criar app **WhatsApp** em [developers.facebook.com](https://developers.facebook.com), obter token e **Phone number ID**.
+- [ ] Não usar a conta atual `Jefferson Brito` para criar o app: ela está com restrição antiga de anúncios e bloqueia a vinculação do portfólio.
+- [x] Entrar com a conta da esposa no Facebook/Meta e ativar autenticação em dois fatores.
+- [x] Confirmado que a conta da esposa já possui portfólio empresarial com acesso total; não foi necessário criar outro.
+- [x] Criar o app **WhatsApp** em [developers.facebook.com](https://developers.facebook.com) usando a conta da esposa e vincular ao portfólio.
+- [x] No app da Meta, abrir `Conectar no WhatsApp` → `Configuração da API` e obter os IDs principais do WhatsApp Cloud API.
+- [ ] Retomar o teste da Meta para entrega da primeira mensagem no número permitido.
+  IDs já obtidos:
+  `Phone Number ID`: `1055627610975532`
+  `WhatsApp Business Account ID`: `949543334667969`
+  Observação: o `Access Token` temporário foi gerado, mas o teste de entrega do template `hello_world` não chegou ao número permitido, mesmo após iniciar conversa com o número de teste da Meta.
+- [ ] Se necessário, remover e cadastrar novamente o número permitido em `Até`, testar outro número e conferir a formatação BR com e sem o `9`.
+- [ ] Depois de validar a entrega pela tela da Meta, gerar um **novo** `Access Token` antes de salvar no Supabase (o token exibido em tela já foi exposto durante o teste).
 - [ ] CLI: `supabase login` → `supabase link --project-ref <REF>` → `supabase secrets set` com `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_EDGE_AUTH_TOKEN`.
 - [ ] Deploy: `supabase functions deploy whatsapp-send`
 - [ ] Testar com o `curl` documentado no `.env.example`.
-- [ ] Em modo teste da Meta, cadastrar números de destino permitidos.
+- [x] Em modo teste da Meta, cadastrar número de destino permitido na lista (`Até`).
+- [ ] Depois que o app novo estiver funcionando, avaliar se vale migrar Página/Instagram para o novo portfólio ou manter separado só para o WhatsApp.
 
 ## Pós-deploy
 

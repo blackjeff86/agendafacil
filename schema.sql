@@ -133,8 +133,19 @@ create table if not exists public.professionals (
   role        text,
   emoji       text default '👤',
   active      boolean default true,
+  day_off_weekday int check (day_off_weekday between 0 and 6),
+  vacation_start date,
+  vacation_end   date,
+  lunch_start    time,
+  lunch_end      time,
   created_at  timestamptz default now()
 );
+
+alter table public.professionals add column if not exists day_off_weekday int;
+alter table public.professionals add column if not exists vacation_start date;
+alter table public.professionals add column if not exists vacation_end date;
+alter table public.professionals add column if not exists lunch_start time;
+alter table public.professionals add column if not exists lunch_end time;
 
 -- ── PROFESSIONAL_SERVICES (pivot) ───────────────────────────
 create table if not exists public.professional_services (
@@ -418,6 +429,51 @@ begin
   return p_start_date;
 end;
 $$;
+
+drop function if exists public.is_professional_slot_blocked(uuid, date, time, int);
+create or replace function public.is_professional_slot_blocked(
+  p_professional_id uuid,
+  p_date date,
+  p_time time,
+  p_duration int
+) returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with professional_data as (
+    select
+      p.day_off_weekday,
+      p.vacation_start,
+      p.vacation_end,
+      p.lunch_start,
+      p.lunch_end
+    from public.professionals p
+    where p.id = p_professional_id
+  )
+  select exists (
+    select 1
+    from professional_data pd
+    where
+      (pd.day_off_weekday is not null and pd.day_off_weekday = extract(dow from p_date)::int)
+      or (
+        pd.vacation_start is not null
+        and pd.vacation_end is not null
+        and p_date between pd.vacation_start and pd.vacation_end
+      )
+      or (
+        pd.lunch_start is not null
+        and pd.lunch_end is not null
+        and (
+          (pd.lunch_start, pd.lunch_end) overlaps
+          (p_time, (p_time + (greatest(p_duration, 1) || ' minutes')::interval)::time)
+        )
+      )
+  );
+$$;
+
+grant execute on function public.is_professional_slot_blocked(uuid, date, time, int) to anon, authenticated;
 
 create or replace function public.create_public_booking(
   p_business_id uuid,
@@ -716,20 +772,21 @@ as $$
     select 1
     from eligible_professionals ep
     join target_service ts on true
-    where not exists (
-      select 1
-      from public.appointments a
-      join public.services s on s.id = a.service_id
-      where a.business_id = p_business_id
-        and a.professional_id = ep.id
-        and a.appointment_date = p_date
-        and a.status not in ('cancelado')
-        and (
-          (a.appointment_time, (a.appointment_time + (s.duration || ' minutes')::interval)::time)
-          overlaps
-          (p_time, (p_time + (ts.duration || ' minutes')::interval)::time)
-        )
-    )
+    where public.is_professional_slot_blocked(ep.id, p_date, p_time, ts.duration) is not true
+      and not exists (
+        select 1
+        from public.appointments a
+        join public.services s on s.id = a.service_id
+        where a.business_id = p_business_id
+          and a.professional_id = ep.id
+          and a.appointment_date = p_date
+          and a.status not in ('cancelado')
+          and (
+            (a.appointment_time, (a.appointment_time + (s.duration || ' minutes')::interval)::time)
+            overlaps
+            (p_time, (p_time + (ts.duration || ' minutes')::interval)::time)
+          )
+      )
   );
 $$;
 
@@ -760,6 +817,7 @@ as $$
   join target_service ts on ts.id = ps.service_id
   where p.business_id = p_business_id
     and p.active = true
+    and public.is_professional_slot_blocked(p.id, p_date, p_time, ts.duration) is not true
     and not exists (
       select 1
       from public.appointments a
@@ -848,6 +906,10 @@ begin
       raise exception 'Profissional inativo.';
     end if;
 
+    if public.is_professional_slot_blocked(new.professional_id, new.appointment_date, new.appointment_time, v_service.duration) then
+      raise exception 'Profissional indisponível nesse período.';
+    end if;
+
     if not exists (
       select 1
       from public.professional_services ps
@@ -864,6 +926,7 @@ begin
     where p.business_id = new.business_id
       and p.active = true
       and ps.service_id = new.service_id
+      and public.is_professional_slot_blocked(p.id, new.appointment_date, new.appointment_time, v_service.duration) is not true
       and not exists (
         select 1
         from public.appointments a

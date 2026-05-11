@@ -8,15 +8,16 @@ import {
   planDisplayLabel,
   type SupportPlanTierKey,
 } from "../config/billing";
-import { DEFAULT_BILLING_CYCLE_DAYS, getAppBaseUrl, SUPPORT_PAGE_SIZE } from "../config/env";
+import { AGENDAFACIL_PIX_KEY, DEFAULT_BILLING_CYCLE_DAYS, getAppBaseUrl, SUPPORT_PAGE_SIZE } from "../config/env";
 import * as authService from "../services/authService";
 import * as businessService from "../services/businessService";
 import * as supportService from "../services/supportService";
-import { sendWhatsAppText } from "../services/whatsappOutbound";
+import { sendWhatsAppTemplate, sendWhatsAppText } from "../services/whatsappOutbound";
 import { state } from "../state/store";
 import { formatBillingLabel, formatCurrency, formatMonthYear, normalizePlanName } from "../utils/formatters";
 import { onlyDigits } from "../utils/phone";
 import { getErrorMessage } from "../utils/errors";
+import { buildRenewalReminderTemplate } from "../utils/whatsappTemplates";
 import { getPublicAppUrl, openModal, showLoading, showToast } from "../ui/dom";
 import { renderSupportBusinesses, renderSupportRenewalList, renderSupportTimeline } from "../ui/render/supportPanel";
 import { loadSupportBusinesses } from "./bootstrap";
@@ -67,15 +68,15 @@ export async function openRenewalReminderWhatsApp(businessId: string): Promise<v
   const business = state.supportBusinesses.find((item) => item.id === businessId);
   if (!business) return;
   const msg = buildRenewalReminderMessage(business);
-  const r = await sendWhatsAppText(business.whatsapp || "", msg);
+  const r = await sendWhatsAppText(business.whatsapp || "", msg, { preferApi: false });
   if (!r.ok) {
-    showToast("Cadastre um WhatsApp válido da loja ou configure a API de envio.");
+    showToast("Cadastre um WhatsApp válido da loja para abrir a cobrança manual.");
     return;
   }
   await createSupportEvent({
     businessId,
     eventType: "renewal_whatsapp",
-    title: "Lembrete de renovação (WhatsApp / PIX)",
+    title: "Cobrança manual via WhatsApp (PIX)",
     details: msg.slice(0, 900),
   });
   await loadSupportBusinesses();
@@ -99,7 +100,8 @@ export async function supportBatchRenewalWhatsapp(): Promise<void> {
   try {
     for (const b of targets) {
       const msg = buildRenewalReminderMessage(b);
-      const r = await sendWhatsAppText(b.whatsapp || "", msg);
+      const template = buildRenewalReminderTemplate(b, AGENDAFACIL_PIX_KEY);
+      const r = template ? await sendWhatsAppTemplate(b.whatsapp || "", template) : await sendWhatsAppText(b.whatsapp || "", msg);
       if (r.ok) ok += 1;
       await new Promise((res) => setTimeout(res, 450));
     }

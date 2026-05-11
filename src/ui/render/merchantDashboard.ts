@@ -1,11 +1,145 @@
 import { DEFAULT_HOURS } from "../../constants/defaults";
+import { countActiveProfessionals, getCustomerManagementLimit, isStarterPlan, STARTER_ACTIVE_PROFESSIONAL_LIMIT } from "../../config/plans";
 import { findProfessional, findService } from "../../state/selectors";
 import { state, STATUS_LABELS } from "../../state/store";
 import type { Business } from "../../types";
 import { emptyStateHtml } from "../components/emptyState";
 import { getPublicAppUrl } from "../dom";
-import { formatCurrency, formatDateShort, formatTimelineDate, formatTime } from "../../utils/formatters";
+import { formatFreezeMetaLabel } from "../../utils/businessHours";
+import { formatCurrency, formatDateShort, formatTime, getLocalIsoDate } from "../../utils/formatters";
+import { buildWhatsAppWebUrlWithText } from "../../utils/phone";
 import { applyPlanNavVisibility, renderPlanStatusStrip, renderProfissionaisPlanHint } from "./planStrip";
+
+let vipCustomersOnly = false;
+const WEEKDAY_LABELS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+type CustomerMetrics = {
+  recurrentCount: number;
+  appointmentsCount: number;
+  appointmentsThisMonth: number;
+  lastAppointment: string;
+};
+
+function getCustomerMetrics(customerId: string): CustomerMetrics {
+  const currentMonthPrefix = getLocalIsoDate().slice(0, 7);
+  const appointments = state.appointments.filter((item) => item.customer_id === customerId && item.status !== "cancelado");
+  const latestAppointment = [...appointments].sort((left, right) => {
+    const leftKey = `${left.appointment_date} ${left.appointment_time}`;
+    const rightKey = `${right.appointment_date} ${right.appointment_time}`;
+    return rightKey.localeCompare(leftKey);
+  })[0];
+  return {
+    recurrentCount: appointments.filter((item) => item.series_id).length,
+    appointmentsCount: appointments.length,
+    appointmentsThisMonth: appointments.filter((item) => item.appointment_date.startsWith(currentMonthPrefix)).length,
+    lastAppointment: latestAppointment
+      ? `${formatDateShort(latestAppointment.appointment_date)}, ${formatTime(latestAppointment.appointment_time)}`
+      : "Ainda sem agendamento",
+  };
+}
+
+function getVipCustomerIds(customers = state.customers): Set<string> {
+  const metrics = customers.map((customer) => ({
+    customerId: customer.id,
+    ...getCustomerMetrics(customer.id),
+  }));
+  const maxRecurrent = Math.max(0, ...metrics.map((item) => item.recurrentCount));
+  const maxMonthlyBookings = Math.max(0, ...metrics.map((item) => item.appointmentsThisMonth));
+  return new Set(
+    metrics
+      .filter(
+        (item) =>
+          (maxRecurrent > 0 && item.recurrentCount === maxRecurrent) ||
+          (maxMonthlyBookings > 0 && item.appointmentsThisMonth === maxMonthlyBookings)
+      )
+      .map((item) => item.customerId)
+  );
+}
+
+function buildCustomerWhatsAppMessage(name: string): string {
+  return `Olá, ${name}! Tudo bem?`;
+}
+
+function buildSupportWhatsAppMessage(): string {
+  return "Olá! Preciso de ajuda com a AgendaFácil.";
+}
+
+function formatAvailabilitySummary(professionalId: string): string {
+  const professional = state.professionals.find((item) => item.id === professionalId);
+  if (!professional) return "";
+  const chunks: string[] = [];
+  if (professional.day_off_weekday !== null && professional.day_off_weekday !== undefined) {
+    chunks.push(`Folga: ${WEEKDAY_LABELS[professional.day_off_weekday] || "Dia"}`);
+  }
+  if (professional.vacation_start && professional.vacation_end) {
+    chunks.push(`Férias: ${new Date(`${professional.vacation_start}T12:00:00`).toLocaleDateString("pt-BR")} a ${new Date(`${professional.vacation_end}T12:00:00`).toLocaleDateString("pt-BR")}`);
+  }
+  if (professional.lunch_start && professional.lunch_end) {
+    chunks.push(`Almoço: ${formatTime(professional.lunch_start)}-${formatTime(professional.lunch_end)}`);
+  }
+  return chunks.join(" · ");
+}
+
+function getDashboardActiveDate(): string {
+  return state.selectedDashboardDate || getLocalIsoDate();
+}
+
+function formatDashboardMonthLabel(date: string): string {
+  return new Date(`${date}T12:00:00`).toLocaleDateString("pt-BR", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function buildDashboardDateOptions(days = 7): string[] {
+  return Array.from({ length: days }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() + index);
+    return getLocalIsoDate(date);
+  });
+}
+
+function renderDashboardDateStrip(): void {
+  const container = document.getElementById("dashboardDateStrip");
+  if (!container) return;
+  const activeDate = getDashboardActiveDate();
+  const days = buildDashboardDateOptions();
+  container.innerHTML = days
+    .map((date) => {
+      const current = new Date(`${date}T12:00:00`);
+      const weekday = current.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
+      const day = current.toLocaleDateString("pt-BR", { day: "2-digit" });
+      const isSelected = activeDate === date;
+      const isToday = date === getLocalIsoDate();
+      return `
+        <button
+          type="button"
+          class="date-btn dashboard-date-btn ${isSelected ? "selected" : ""} ${isToday ? "today" : ""}"
+          onclick="selectDashboardDate('${date}', event)"
+        >
+          <span>${weekday}</span>
+          <span class="day-num">${day}</span>
+        </button>`;
+    })
+    .join("");
+}
+
+export function toggleCustomerVipFilter(): void {
+  vipCustomersOnly = !vipCustomersOnly;
+  renderCustomers();
+}
+
+export function openCustomerWhatsApp(phone: string, name: string): void {
+  const url = buildWhatsAppWebUrlWithText(phone, buildCustomerWhatsAppMessage(name));
+  if (!url) return;
+  window.open(url, "_blank");
+}
+
+export function openSupportWhatsApp(): void {
+  const url = buildWhatsAppWebUrlWithText("(21) 99808-1325", buildSupportWhatsAppMessage());
+  if (!url) return;
+  window.open(url, "_blank");
+}
 
 export function applyBusinessPreview(business: Business | null): void {
   const avatar = document.getElementById("bizAvatarPreview");
@@ -51,6 +185,27 @@ export function getTopProfessionalName(): string {
   return top ? findProfessional(top[0])?.name || "-" : "-";
 }
 
+export function getTopServiceRevenue(): string {
+  const totals = new Map<string, number>();
+  state.appointments.forEach((appointment) => {
+    const service = findService(appointment.service_id);
+    totals.set(appointment.service_id, (totals.get(appointment.service_id) || 0) + Number(service?.price || 0));
+  });
+  const top = [...totals.entries()].sort((left, right) => right[1] - left[1])[0];
+  return top ? formatCurrency(top[1]) : formatCurrency(0);
+}
+
+export function getTopProfessionalBookingCount(): string {
+  const counts = new Map<string, number>();
+  state.appointments.forEach((appointment) => {
+    if (appointment.professional_id) {
+      counts.set(appointment.professional_id, (counts.get(appointment.professional_id) || 0) + 1);
+    }
+  });
+  const top = [...counts.entries()].sort((left, right) => right[1] - left[1])[0];
+  return top ? `${top[1]} reservas` : "0 reservas";
+}
+
 export function renderBusinessProfile(): void {
   const business = state.business;
   if (!business) return;
@@ -77,45 +232,55 @@ export function renderBusinessProfile(): void {
 }
 
 export function renderDashboard(): void {
-  const today = new Date().toISOString().slice(0, 10);
-  const todayItems = state.appointments.filter((item) => item.appointment_date === today && item.status !== "cancelado");
-  const revenue = todayItems.reduce((total, item) => total + (findService(item.service_id)?.price || 0), 0);
+  const activeDate = getDashboardActiveDate();
+  let dayItems = state.appointments.filter((item) => item.appointment_date === activeDate && item.status !== "cancelado");
+  if (state.currentFilter !== "todos") {
+    dayItems = dayItems.filter((item) => item.status === state.currentFilter);
+  }
+  const revenue = dayItems.reduce((total, item) => total + (findService(item.service_id)?.price || 0), 0);
 
   const setText = (id: string, text: string) => {
     const el = document.getElementById(id);
     if (el) el.textContent = text;
   };
 
-  setText("statTodayCount", String(todayItems.length));
+  setText("dashboardDatePrefix", "Visão geral");
+  setText("todayDate", formatDashboardMonthLabel(activeDate));
+  setText("statTodayCount", String(dayItems.length));
+  setText("statTodayLabel", state.selectedDashboardDate ? "Agendamentos no dia" : "Agendamentos de hoje");
   setText("statRevenue", formatCurrency(revenue));
-  setText("statTopService", getTopServiceName());
-  setText("statTopProfessional", getTopProfessionalName());
+  const serviceCounts = new Map<string, { count: number; revenue: number }>();
+  const professionalCounts = new Map<string, number>();
+  dayItems.forEach((appointment) => {
+    const service = findService(appointment.service_id);
+    if (service) {
+      serviceCounts.set(appointment.service_id, {
+        count: (serviceCounts.get(appointment.service_id)?.count || 0) + 1,
+        revenue: (serviceCounts.get(appointment.service_id)?.revenue || 0) + Number(service.price || 0),
+      });
+    }
+    if (appointment.professional_id) {
+      professionalCounts.set(appointment.professional_id, (professionalCounts.get(appointment.professional_id) || 0) + 1);
+    }
+  });
+  const topService = [...serviceCounts.entries()].sort((left, right) => right[1].count - left[1].count)[0];
+  const topProfessional = [...professionalCounts.entries()].sort((left, right) => right[1] - left[1])[0];
+  setText("statTopService", topService ? findService(topService[0])?.name || "-" : "-");
+  setText("statTopProfessional", topProfessional ? findProfessional(topProfessional[0])?.name || "-" : "-");
+  setText("statTopServiceMeta", topService ? formatCurrency(topService[1].revenue) : formatCurrency(0));
+  setText("statTopProfessionalMeta", topProfessional ? `${topProfessional[1]} reservas` : "0 reservas");
 
-  const list = state.appointments.slice(0, 5);
-  const dash = document.getElementById("dashApptList");
-  if (!dash) return;
-  dash.innerHTML = list.length
-    ? list
-        .map((appointment) => {
-          const service = findService(appointment.service_id);
-          const professional = findProfessional(appointment.professional_id);
-          const status = STATUS_LABELS[appointment.status] || STATUS_LABELS.pendente;
-          return `
-            <div class="appt-item" onclick="openApptDetail('${appointment.id}')">
-              <div class="appt-time">${formatTime(appointment.appointment_time)}</div>
-              <div class="appt-info">
-                <div class="name">${appointment.client_name}</div>
-                <div class="detail">${service?.name || "Servico"} · ${professional?.name || "Sem preferencia"}</div>
-              </div>
-              <span class="badge ${status.cls}">${status.label}</span>
-            </div>`;
-        })
-        .join("")
-    : emptyStateHtml("Nenhum agendamento por enquanto.");
+  renderDashboardDateStrip();
+  const clearButton = document.getElementById("clearDashboardDateBtn");
+  clearButton?.classList.toggle("hidden", !state.selectedDashboardDate);
 }
 
 export function renderApptList(filter: string): void {
-  let list = [...state.appointments];
+  const activeDate = state.selectedDashboardDate;
+  const todayIso = getLocalIsoDate();
+  let list = activeDate
+    ? state.appointments.filter((item) => item.appointment_date === activeDate)
+    : state.appointments.filter((item) => item.appointment_date >= todayIso);
   if (filter !== "todos") {
     list = list.filter((item) => item.status === filter);
   }
@@ -139,7 +304,7 @@ export function renderApptList(filter: string): void {
                 <div class="text-xs text-sub">${dateStr}</div>
               </div>
               <div class="appt-info">
-                <div class="name">${appointment.client_name}${recurrenceBadge}</div>
+                <div class="name ${appointment.status === "concluido" ? "is-done" : ""}">${appointment.client_name}${recurrenceBadge}</div>
                 <div class="detail">${service?.name || "Servico"} · ${professional?.emoji || "👤"} ${professional?.name || "Sem preferencia"}</div>
               </div>
               <span class="badge ${status.cls}">${status.label}</span>
@@ -149,33 +314,159 @@ export function renderApptList(filter: string): void {
     : emptyStateHtml("Nenhum agendamento encontrado.");
 }
 
-export function renderCustomers(): void {
-  const container = document.getElementById("clientesList");
+export function renderApptHistoryList(filter: string): void {
+  const container = document.getElementById("apptHistoryList");
   if (!container) return;
-  container.innerHTML = state.customers.length
-    ? state.customers
-        .map((customer) => {
-          const appointments = state.appointments.filter((item) => item.customer_id === customer.id);
-          const recurrentCount = appointments.filter((item) => item.series_id).length;
+  const todayIso = getLocalIsoDate();
+  let list = state.appointments.filter((item) => item.appointment_date < todayIso);
+  if (filter !== "todos") {
+    list = list.filter((item) => item.status === filter);
+  }
+
+  container.innerHTML = list.length
+    ? list
+        .sort((left, right) => {
+          const leftKey = `${left.appointment_date} ${left.appointment_time}`;
+          const rightKey = `${right.appointment_date} ${right.appointment_time}`;
+          return rightKey.localeCompare(leftKey);
+        })
+        .map((appointment) => {
+          const service = findService(appointment.service_id);
+          const professional = findProfessional(appointment.professional_id);
+          const status = STATUS_LABELS[appointment.status] || STATUS_LABELS.pendente;
           return `
-            <div class="card">
-              <div class="flex justify-between items-start gap-3">
-                <div>
-                  <div class="font-bold text-lg">${customer.name}</div>
-                  <div class="text-sm text-sub">${customer.email || "Sem e-mail"} · ${customer.phone}</div>
-                </div>
-                <span class="badge badge-brand">${appointments.length} agendamento(s)</span>
+            <div class="appt-item" onclick="openApptDetail('${appointment.id}')">
+              <div>
+                <div class="appt-time">${formatTime(appointment.appointment_time)}</div>
+                <div class="text-xs text-sub">${formatDateShort(appointment.appointment_date)}</div>
               </div>
-              <div class="text-sm text-sub mt-2">Último contato: ${customer.last_booking_at ? formatTimelineDate(customer.last_booking_at) : "Ainda sem agendamento"}</div>
-              <div class="flex gap-2 mt-2" style="flex-wrap:wrap;">
-                <span class="chip">WhatsApp: ${customer.phone}</span>
-                ${customer.email ? `<span class="chip">E-mail: ${customer.email}</span>` : ""}
-                ${recurrentCount ? `<span class="chip">Recorrentes: ${recurrentCount}</span>` : ""}
+              <div class="appt-info">
+                <div class="name ${appointment.status === "concluido" ? "is-done" : ""}">${appointment.client_name}</div>
+                <div class="detail">${service?.name || "Servico"} · ${professional?.emoji || "👤"} ${professional?.name || "Sem preferencia"}</div>
               </div>
+              <span class="badge ${status.cls}">${status.label}</span>
             </div>`;
         })
         .join("")
-    : emptyStateHtml("Os clientes aparecerão aqui conforme fizerem agendamentos pelo link público.");
+    : emptyStateHtml("Nenhum agendamento antigo no histórico.");
+}
+
+export function renderCustomers(): void {
+  const container = document.getElementById("clientesList");
+  if (!container) return;
+  const limit = getCustomerManagementLimit(state.business);
+  const searchInput = document.getElementById("customerSearchInput");
+  const rawSearch = searchInput instanceof HTMLInputElement ? searchInput.value.trim() : "";
+  const search = rawSearch.toLowerCase();
+  const sortedCustomers = [...state.customers].sort((left, right) => left.name.localeCompare(right.name, "pt-BR"));
+  const vipIds = getVipCustomerIds(sortedCustomers);
+  let filteredCustomers = search
+    ? sortedCustomers.filter((customer) => customer.name.toLowerCase().includes(search))
+    : sortedCustomers;
+  if (vipCustomersOnly) {
+    filteredCustomers = filteredCustomers.filter((customer) => vipIds.has(customer.id));
+  }
+  const visibleCustomers = filteredCustomers.slice(0, limit);
+  const totalAppointments = visibleCustomers.reduce(
+    (acc, customer) => acc + getCustomerMetrics(customer.id).appointmentsCount,
+    0
+  );
+  const recurrentCustomers = visibleCustomers.filter((customer) => getCustomerMetrics(customer.id).recurrentCount > 0).length;
+  const vipCustomers = visibleCustomers.filter((customer) => vipIds.has(customer.id)).length;
+  const starterHint =
+    state.business && isStarterPlan(state.business) && filteredCustomers.length > limit
+      ? `<div class="card card-sm plan-hint-card"><strong>Plano Starter</strong><span class="text-sm text-sub">Você está vendo os primeiros <strong>${limit} clientes</strong>. Faça upgrade para o Pro para liberar a base completa.</span></div>`
+      : "";
+  const controls = `
+      <div class="card card-sm customer-tools-card">
+        <div class="customer-tools-row">
+          <div class="input-group">
+            <label for="customerSearchInput">Buscar cliente</label>
+            <input type="text" id="customerSearchInput" placeholder="Digite o nome do cliente" oninput="filterCustomers()" />
+          </div>
+          <button class="customer-filter-chip ${vipCustomersOnly ? "is-active" : ""}" type="button" onclick="toggleCustomerVipFilter()">
+            ⭐ Clientes VIP
+          </button>
+        </div>
+      </div>`;
+  const listHtml = visibleCustomers.length
+    ? visibleCustomers
+        .map((customer) => {
+          const metrics = getCustomerMetrics(customer.id);
+          const isVip = vipIds.has(customer.id);
+          const initial = customer.name?.trim()?.charAt(0)?.toUpperCase() || "C";
+          return `
+            <details class="card customer-card customer-accordion">
+              <summary class="customer-card-summary">
+                <div class="customer-card-top">
+                  <div class="customer-card-main-wrap">
+                    <div class="customer-card-avatar">${initial}</div>
+                    <div class="customer-card-main">
+                      <div class="customer-card-name-row">
+                        <div class="customer-card-name">${customer.name}</div>
+                        ${isVip ? `<span class="customer-vip-badge" title="Cliente VIP">⭐ VIP</span>` : ""}
+                      </div>
+                      <div class="customer-card-contact">${customer.email || "Sem e-mail"} · ${customer.phone}</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="customer-summary-footer">
+                  <span class="badge badge-brand">${metrics.appointmentsCount} agendamento(s)</span>
+                  <span class="customer-expand-icon" aria-hidden="true">⌄</span>
+                </div>
+              </summary>
+              <div class="customer-card-body">
+                <div class="customer-card-meta-grid">
+                  <div class="customer-mini-info">
+                    <span>Último agendamento</span>
+                    <strong>${metrics.lastAppointment}</strong>
+                  </div>
+                  <div class="customer-mini-info">
+                    <span>Recorrência</span>
+                    <strong>${metrics.recurrentCount ? `${metrics.recurrentCount} recorrente(s)` : "Sem recorrência"}</strong>
+                  </div>
+                </div>
+                <div class="customer-chip-row">
+                  <button class="chip customer-chip-btn" type="button" onclick="openCustomerWhatsApp('${customer.phone}', '${customer.name.replace(/'/g, "\\'")}')">WhatsApp: ${customer.phone}</button>
+                  ${customer.email ? `<span class="chip">E-mail: ${customer.email}</span>` : ""}
+                  ${metrics.recurrentCount ? `<span class="chip">Recorrentes: ${metrics.recurrentCount}</span>` : `<span class="chip">Cliente avulso</span>`}
+                  ${isVip ? `<span class="chip chip-vip">Mais ativo no mês</span>` : ""}
+                </div>
+              </div>
+            </details>`;
+        })
+        .join("")
+    : emptyStateHtml(search || vipCustomersOnly ? "Nenhum cliente encontrado com esse filtro." : "Os clientes aparecerão aqui conforme fizerem agendamentos pelo link público.");
+  const summary = visibleCustomers.length
+    ? `
+      <div class="stat-grid customer-summary-grid">
+        <div class="stat-card customer-stat-card">
+          <div class="stat-icon">👥</div>
+          <div class="stat-val">${visibleCustomers.length}</div>
+          <div class="stat-label">Clientes visíveis</div>
+        </div>
+        <div class="stat-card customer-stat-card">
+          <div class="stat-icon">📅</div>
+          <div class="stat-val">${totalAppointments}</div>
+          <div class="stat-label">Agendamentos vinculados</div>
+        </div>
+        <div class="stat-card customer-stat-card">
+          <div class="stat-icon">🔁</div>
+          <div class="stat-val">${recurrentCustomers}</div>
+          <div class="stat-label">Clientes recorrentes</div>
+        </div>
+        <div class="stat-card customer-stat-card">
+          <div class="stat-icon">⭐</div>
+          <div class="stat-val">${vipCustomers}</div>
+          <div class="stat-label">Clientes VIP</div>
+        </div>
+      </div>`
+    : "";
+  container.innerHTML = `${starterHint}${summary}${controls}${listHtml}`;
+  const nextSearchInput = document.getElementById("customerSearchInput");
+  if (nextSearchInput instanceof HTMLInputElement) {
+    nextSearchInput.value = rawSearch;
+  }
 }
 
 export function renderServicos(): void {
@@ -215,15 +506,52 @@ export function renderServicos(): void {
 }
 
 export function renderProfissionais(): void {
-  const el = document.getElementById("profissionaisList");
-  if (!el) return;
-  el.innerHTML = state.professionals.length
-    ? state.professionals
+  const activeCount = countActiveProfessionals(state.professionals);
+  const addButton = document.getElementById("btnAddProfessional") as HTMLButtonElement | null;
+  if (addButton && state.business && isStarterPlan(state.business)) {
+    const blocked = activeCount >= STARTER_ACTIVE_PROFESSIONAL_LIMIT;
+    addButton.disabled = blocked;
+    addButton.title = blocked
+      ? `No Plano Starter você pode manter até ${STARTER_ACTIVE_PROFESSIONAL_LIMIT} profissionais ativos.`
+      : "";
+  }
+
+  const sortedProfessionals = [...state.professionals].sort((a, b) => {
+    if (a.active !== b.active) return a.active ? -1 : 1;
+    return a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" });
+  });
+
+  const html = sortedProfessionals.length
+    ? sortedProfessionals
         .map((professional) => {
           const serviceNames = state.professionalServices
             .filter((item) => item.professional_id === professional.id)
             .map((item) => findService(item.service_id)?.name)
             .filter(Boolean);
+          const availabilitySummary = formatAvailabilitySummary(professional.id);
+          const starterBlocked = Boolean(
+            state.business &&
+              isStarterPlan(state.business) &&
+              !professional.active &&
+              activeCount >= STARTER_ACTIVE_PROFESSIONAL_LIMIT
+          );
+          const inlineHint = starterBlocked
+            ? "Limite do Starter atingido. Desative outro profissional para reativar este."
+            : "Disponível para reativação porque sua conta ainda está dentro do limite de profissionais ativos.";
+          const inlineAction = professional.active
+            ? ""
+            : `
+                <div class="professional-inline-actions">
+                  <button
+                    class="btn btn-sm btn-success"
+                    type="button"
+                    onclick="toggleProfessionalActive('${professional.id}')"
+                    ${starterBlocked ? "disabled" : ""}
+                  >
+                    Reativar profissional
+                  </button>
+                  <div class="professional-inline-hint">${inlineHint}</div>
+                </div>`;
 
           return `
             <div class="card card-sm flex items-center gap-3 ${professional.active ? "" : "soft-inactive"}" style="margin-bottom:10px;">
@@ -244,11 +572,18 @@ export function renderProfissionais(): void {
                 </div>
                 <div class="text-sm text-sub">${professional.role || ""}</div>
                 <div class="mt-1">${serviceNames.map((name) => `<span class="chip" style="margin-bottom:0;">${name}</span>`).join("")}</div>
+                ${availabilitySummary ? `<div class="text-xs text-sub mt-2">${availabilitySummary}</div>` : ""}
+                ${inlineAction}
               </div>
             </div>`;
         })
         .join("")
     : emptyStateHtml("Cadastre seu primeiro profissional.");
+  const targets = ["profissionaisList", "profissionaisNegocioList"];
+  targets.forEach((targetId) => {
+    const target = document.getElementById(targetId);
+    if (target) target.innerHTML = html;
+  });
 }
 
 export function renderHorarios(): void {
@@ -256,21 +591,51 @@ export function renderHorarios(): void {
   const el = document.getElementById("horariosList");
   if (!el) return;
   el.innerHTML = list
-    .map(
-      (hour) => `
-        <div class="flex items-center justify-between" style="padding:10px 0;border-bottom:1px solid var(--border);">
-          <div class="font-semibold text-sm" style="min-width:80px;">${hour.day_name}</div>
-          <div class="flex gap-2" style="align-items:center;">
-            <input type="time" id="hour-open-${hour.day_of_week}" value="${hour.open_time || ""}" ${hour.active ? "" : "disabled"} style="width:110px;" />
-            <span class="text-sm text-sub">ate</span>
-            <input type="time" id="hour-close-${hour.day_of_week}" value="${hour.close_time || ""}" ${hour.active ? "" : "disabled"} style="width:110px;" />
+    .map((hour) => {
+      const freezeMeta = formatFreezeMetaLabel(hour);
+      return `
+        <div class="hour-card ${hour.frozen ? "is-frozen" : ""}">
+          <div class="hour-card-head">
+            <div class="hour-day-name">${hour.day_name}</div>
+            <label class="hour-switch-wrap">
+              <span class="hour-inline-label">Dia ativo</span>
+              <span class="toggle">
+                <input type="checkbox" id="hour-active-${hour.day_of_week}" ${hour.active ? "checked" : ""} onchange="toggleHourInputs(${hour.day_of_week})" />
+                <span class="toggle-slider"></span>
+              </span>
+            </label>
           </div>
-          <label class="toggle">
-            <input type="checkbox" id="hour-active-${hour.day_of_week}" ${hour.active ? "checked" : ""} onchange="toggleHourInputs(${hour.day_of_week})" />
-            <span class="toggle-slider"></span>
-          </label>
+
+          <button
+            type="button"
+            id="hour-frozen-${hour.day_of_week}"
+            class="hour-freeze-btn ${hour.frozen ? "is-frozen" : ""}"
+            data-frozen="${hour.frozen ? "true" : "false"}"
+            data-frozen-date="${hour.frozen_date || ""}"
+            data-frozen-time="${hour.frozen_time || ""}"
+            data-frozen-until-time="${hour.frozen_until_time || ""}"
+            aria-pressed="${hour.frozen ? "true" : "false"}"
+            title="${hour.frozen && hour.frozen_time ? `Agenda pausada às ${hour.frozen_time}` : "Pausar agenda desse dia"}"
+            onclick="toggleHourFrozen(${hour.day_of_week})"
+            ${hour.active ? "" : "disabled"}
+          >
+            <span class="freeze-icon">${hour.frozen ? "▶" : "⏸"}</span>
+            <span class="freeze-label">${hour.frozen ? "Liberar agenda" : "Pausar agenda"}</span>
+            ${freezeMeta ? `<span class="freeze-meta">${freezeMeta}</span>` : ""}
+          </button>
+
+          <div class="hour-time-grid">
+            <label class="hour-time-field">
+              <span class="hour-field-label">Abre às</span>
+              <input class="hour-time-input" type="time" id="hour-open-${hour.day_of_week}" value="${hour.open_time || ""}" ${hour.active ? "" : "disabled"} />
+            </label>
+            <label class="hour-time-field">
+              <span class="hour-field-label">Fecha às</span>
+              <input class="hour-time-input" type="time" id="hour-close-${hour.day_of_week}" value="${hour.close_time || ""}" ${hour.active ? "" : "disabled"} />
+            </label>
+          </div>
         </div>`
-    )
+    })
     .join("");
 }
 
@@ -309,6 +674,7 @@ export function renderAdmin(): void {
   renderBusinessProfile();
   renderDashboard();
   renderApptList(state.currentFilter);
+  renderApptHistoryList(state.historyFilter);
   renderServicos();
   renderProfissionais();
   renderProfissionaisPlanHint();

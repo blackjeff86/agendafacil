@@ -38,7 +38,8 @@ export async function fetchBusinessBySlugPublic(slug: string): Promise<Business 
 }
 
 export async function upsertBusinessHours(rows: Record<string, unknown>[]) {
-  const { error } = await getSupabase().from("business_hours").upsert(rows, { onConflict: "business_id,day_of_week" });
+  const sanitizedRows = rows.map(({ frozen: _frozen, frozen_date: _fd, frozen_time: _ft, frozen_until_time: _fut, ...row }) => row);
+  const { error } = await getSupabase().from("business_hours").upsert(sanitizedRows, { onConflict: "business_id,day_of_week" });
   if (error) throw error;
 }
 
@@ -76,13 +77,15 @@ export async function seedBusinessDefaults(businessId: string): Promise<void> {
 
   const { error: hoursError } = await sb
     .from("business_hours")
-    .insert(DEFAULT_HOURS.map((hour) => ({ ...hour, business_id: businessId })));
+    .insert(DEFAULT_HOURS.map(({ frozen: _frozen, frozen_date: _fd, frozen_time: _ft, frozen_until_time: _fut, ...hour }) => ({ ...hour, business_id: businessId })));
   if (hoursError) throw hoursError;
 }
 
 export function buildNewBusinessPayload(userId: string, userEmail: string | undefined, draft: PendingBusinessDraft): Record<string, unknown> {
   const trialEnds = new Date();
   trialEnds.setDate(trialEnds.getDate() + TRIAL_DAYS);
+  const planTier = draft.plan_tier === "pro" ? "pro" : "starter";
+  const planName = draft.plan_name || (planTier === "pro" ? "Plano Pro" : "Plano Starter");
   return {
     owner_id: userId,
     owner_email: draft.email || userEmail || "",
@@ -96,8 +99,8 @@ export function buildNewBusinessPayload(userId: string, userEmail: string | unde
     logo_emoji: draft.logo_emoji || "✂️",
     logo_image_url: draft.logo_image_url || "",
     cover_image_url: draft.cover_image_url || "",
-    plan_name: draft.plan_name || "Plano Starter",
-    plan_tier: "starter",
+    plan_name: planName,
+    plan_tier: planTier,
     billing_status: draft.billing_status || "trial",
     trial_ends_at: trialEnds.toISOString(),
     next_billing_at: trialEnds.toISOString(),
