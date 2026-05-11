@@ -1,10 +1,16 @@
 import { formatBrazilPhone } from "../utils/phone";
 import { slugify } from "../utils/strings";
 import { runPendingConfirmAction } from "./appointmentActions";
+import { histSelectRescheduleSlot, renderHistoricoRescheduleTimeGrid } from "./clientHistoricoFlow";
+import { merchantSelectApptSlot, renderMerchantApptTimeGrid } from "./merchantAppointmentSlots";
 import { switchAuthMode, syncSignupFormMode } from "./authUi";
 import { showPublicBooking } from "./publicFlow";
 
 export function initStaticSetup(): void {
+  const w = window as unknown as Record<string, unknown>;
+  w.merchantSelectApptSlot = merchantSelectApptSlot;
+  w.histSelectRescheduleSlot = histSelectRescheduleSlot;
+
   const signupBusinessName = document.getElementById("signupBusinessName");
   const signupSlug = document.getElementById("signupSlug") as HTMLInputElement | null;
   const signupEmail = document.getElementById("signupEmail");
@@ -63,4 +69,12 @@ export function initStaticSetup(): void {
   });
 
   syncSignupFormMode();
+
+  ["newApptService", "newApptProfessional", "newApptDate"].forEach((id) => {
+    document.getElementById(id)?.addEventListener("change", () => void renderMerchantApptTimeGrid());
+  });
+  document.getElementById("newApptTime")?.addEventListener("change", () => void renderMerchantApptTimeGrid());
+
+  document.getElementById("histRescheduleDate")?.addEventListener("change", () => void renderHistoricoRescheduleTimeGrid());
+  document.getElementById("histRescheduleProf")?.addEventListener("change", () => void renderHistoricoRescheduleTimeGrid());
 }

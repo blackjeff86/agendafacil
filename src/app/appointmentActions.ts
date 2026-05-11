@@ -10,9 +10,10 @@ import {
   buildAppointmentConfirmationFromRow,
   type AppointmentCancellationKind,
 } from "../utils/whatsappTemplates";
-import { showLoading, showToast, openModal, closeModal as closeModalEl } from "../ui/dom";
+import { getPublicHistoricoUrlByPortalToken, showLoading, showToast, openModal, closeModal as closeModalEl } from "../ui/dom";
 import { refreshAllBusinessData } from "./refresh";
 import { createSupportEvent } from "./supportEvents";
+import { renderMerchantApptTimeGrid } from "./merchantAppointmentSlots";
 
 export function closeModal(id: string): void {
   closeModalEl(id);
@@ -146,6 +147,7 @@ export function deleteCurrentSeries(): void {
 
 export function resetAppointmentModal(): void {
   state.editingAppointmentId = null;
+  state.editingAppointmentOriginal = null;
   const t = (id: string, v: string) => {
     const el = document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null;
     if (el) el.value = v;
@@ -176,6 +178,7 @@ export function editAppointmentFromDetail(): void {
   if (!state.selectedAppointment) return;
   const appointment = state.selectedAppointment;
   state.editingAppointmentId = appointment.id;
+  state.editingAppointmentOriginal = { ...appointment };
   const title = document.getElementById("apptModalTitle");
   if (title) title.textContent = "Editar Agendamento";
   const saveBtn = document.getElementById("apptModalSaveBtn");
@@ -188,6 +191,7 @@ export function editAppointmentFromDetail(): void {
   (document.getElementById("newApptTime") as HTMLInputElement).value = formatTime(appointment.appointment_time);
   closeModal("modalApptDetail");
   openModal("modalNovoAppt");
+  void renderMerchantApptTimeGrid();
 }
 
 async function notifyCustomerCancellation(appt: AppointmentRow, kind: AppointmentCancellationKind): Promise<string> {
@@ -204,12 +208,16 @@ async function notifyAppointmentConfirmed(appt: AppointmentRow): Promise<string>
   const businessName = state.business?.name || "Nosso estabelecimento";
   const svc = findService(appt.service_id);
   const prof = findProfessional(appt.professional_id);
+  const slug = state.business?.slug;
+  const historicoUrl =
+    slug && appt.client_portal_token ? getPublicHistoricoUrlByPortalToken(slug, appt.client_portal_token) : null;
   const msg = buildAppointmentConfirmationFromRow(
     appt,
     businessName,
     svc?.name || "Serviço",
     prof?.name || "",
-    Number(svc?.price ?? 0)
+    Number(svc?.price ?? 0),
+    historicoUrl
   );
   const r = await sendWhatsAppText(appt.client_phone, msg);
   if (r.usedApi && r.ok) return "Confirmado. Mensagem enviada ao cliente (WhatsApp API).";

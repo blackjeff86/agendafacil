@@ -669,6 +669,24 @@
           </div>
         </div>
       </div>
+      <div class="card mt-3" style="padding:14px;">
+        <div class="font-semibold text-sm mb-2">Já é cliente?</div>
+        <p class="text-xs text-sub mb-2">Veja seus horários e estatísticas com este salão.</p>
+        <div class="input-group" style="margin-bottom:10px;">
+          <label for="pubHistoricoPhoneInput">WhatsApp (DDD + número)</label>
+          <input type="tel" id="pubHistoricoPhoneInput" placeholder="(11) 99999-0000" inputmode="numeric" maxlength="15" data-br-phone="true" />
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" style="width:100%" onclick="submitHistoricoPhoneFromPubHome()">Ver meus horários</button>
+      </div>
+    </div>
+
+    <div id="pubHistorico" class="page page-nopad hidden">
+      <div class="top-bar">
+        <button class="back-btn" type="button" onclick="leaveHistoricoToBooking()">←</button>
+        <h2>Meu histórico</h2>
+        <div style="width:40px;"></div>
+      </div>
+      <div class="scroll-area" id="pubHistoricoBody"></div>
     </div>
 
     <div id="pubStep1" class="page page-nopad hidden">
@@ -780,6 +798,24 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="modalPubReschedule">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="font-bold text-lg mb-2">Reagendar</div>
+      <p class="text-sm text-sub mb-3">Escolha nova data e horário respeitando a disponibilidade do salão.</p>
+      <div class="card mb-3">
+        <div class="summary-row"><span class="label">Serviço</span><span class="value" id="histRescheduleService">—</span></div>
+      </div>
+      <div class="input-group"><label for="histRescheduleDate">Nova data</label><input type="date" id="histRescheduleDate" /></div>
+      <div class="input-group"><label for="histRescheduleProf">Profissional</label><select id="histRescheduleProf"></select></div>
+      <input type="hidden" id="histRescheduleTime" value="" />
+      <div class="section-title mt-2" style="font-size:13px;">Horários disponíveis</div>
+      <div class="time-grid" id="histRescheduleTimeGrid"></div>
+      <button class="btn btn-brand mt-2" type="button" onclick="confirmPublicReschedule()">Confirmar novo horário</button>
+      <button class="btn btn-ghost mt-2" type="button" onclick="closePublicRescheduleModal()">Cancelar</button>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="modalNovoAppt">
     <div class="modal-sheet">
       <div class="modal-handle"></div>
@@ -789,7 +825,10 @@
       <div class="input-group"><label for="newApptService">Serviço</label><select id="newApptService"></select></div>
       <div class="input-group"><label for="newApptProfessional">Profissional</label><select id="newApptProfessional"></select></div>
       <div class="input-group"><label for="newApptDate">Data</label><input type="date" id="newApptDate" /></div>
-      <div class="input-group"><label for="newApptTime">Horário</label><input type="time" id="newApptTime" /></div>
+      <div class="input-group"><label for="newApptTime">Horário</label><input type="time" id="newApptTime" step="300" /></div>
+      <div class="section-title mt-3" style="margin-bottom:8px;font-size:13px;">Horários livres nesta data</div>
+      <div class="time-grid" id="merchantApptTimeGrid"></div>
+      <p class="text-xs text-sub mb-2">Toque em um horário livre ou ajuste manualmente acima.</p>
       <button class="btn btn-brand mt-2" id="apptModalSaveBtn" type="button" onclick="saveAppointment()">Salvar Agendamento</button>
       <button class="btn btn-ghost mt-2" type="button" onclick="closeAppointmentModal()">Cancelar</button>
     </div>

@@ -9,9 +9,11 @@ import { slugify } from "../utils/strings";
 import { createBusinessAndSeed } from "./businessLifecycle";
 import { refreshAllBusinessData } from "./refresh";
 import { switchAuthMode } from "./authUi";
+import { enterPublicHistoricoFromPortalToken, enterPublicHistoricoFromUrl } from "./clientHistoricoFlow";
 import { loadPublicData } from "./publicData";
 import { pubGoRaw } from "./publicFlow";
 import { navTo } from "./navigation";
+import { onlyDigits } from "../utils/phone";
 
 function getPendingSetup(): Record<string, string> | null {
   try {
@@ -137,7 +139,25 @@ export async function bootstrapApp(): Promise<void> {
     if (slug) {
       await loadPublicData(slug);
       showScreen("publicShell");
-      pubGoRaw(0);
+      const historico = params.get("historico") === "1";
+      const cvRaw = params.get("cv") || params.get("portal");
+      const telRaw = params.get("tel") || params.get("telefone");
+      if (historico && cvRaw) {
+        await enterPublicHistoricoFromPortalToken(slug, cvRaw);
+      } else if (historico && telRaw) {
+        const tel = onlyDigits(telRaw);
+        if (tel.length >= 10) {
+          await enterPublicHistoricoFromUrl(slug, tel);
+        } else {
+          pubGoRaw(0);
+          showToast("Telefone inválido no link. Use o campo abaixo ou peça um novo link ao salão.");
+        }
+      } else if (historico) {
+        pubGoRaw(0);
+        showToast("Informe seu WhatsApp abaixo ou use o link enviado pelo salão (sem telefone na URL).");
+      } else {
+        pubGoRaw(0);
+      }
       return;
     }
 

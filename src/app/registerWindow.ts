@@ -5,6 +5,7 @@ import { switchAuthMode } from "./authUi";
 import * as merchant from "./merchantActions";
 import { filterAppt, navTo } from "./navigation";
 import { confirmPlanUpgradeToPro, openPlanUpgradeModal } from "./planActions";
+import * as historico from "./clientHistoricoFlow";
 import * as pub from "./publicFlow";
 import { toggleRecurrenceFields } from "./publicData";
 import { renderSupportBusinesses } from "../ui/render/supportPanel";
@@ -55,6 +56,11 @@ export function registerWindowActions(): void {
     copyWAMsg: pub.copyWAMsg,
     copyLink: pub.copyLink,
     shareWhatsApp: pub.shareWhatsApp,
+    submitHistoricoPhoneFromPubHome: historico.submitHistoricoPhoneFromPubHome,
+    leaveHistoricoToBooking: historico.leaveHistoricoToBooking,
+    openPublicRescheduleModal: historico.openPublicRescheduleModal,
+    closePublicRescheduleModal: historico.closePublicRescheduleModal,
+    confirmPublicReschedule: historico.confirmPublicReschedule,
     openBusinessWhatsApp: pub.openBusinessWhatsApp,
     openBusinessInstagram: pub.openBusinessInstagram,
     openHostedPublicPage: pub.openHostedPublicPage,

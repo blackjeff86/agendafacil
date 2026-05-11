@@ -9,10 +9,21 @@ export function buildAppointmentConfirmationMessage(params: {
   appointmentDate: string;
   appointmentTime: string;
   priceLabel: string;
+  /** Link da página pública com seus horários e histórico com o salão. */
+  historicoUrl?: string | null;
 }): string {
-  const { clientName, businessName, serviceName, professionalName, appointmentDate, appointmentTime, priceLabel } = params;
+  const {
+    clientName,
+    businessName,
+    serviceName,
+    professionalName,
+    appointmentDate,
+    appointmentTime,
+    priceLabel,
+    historicoUrl,
+  } = params;
   const first = clientName.split(/\s+/)[0] || clientName;
-  return [
+  const head = [
     `Olá, ${first}! 👋`,
     "",
     `Seu agendamento em *${businessName}* foi *confirmado*.`,
@@ -22,11 +33,10 @@ export function buildAppointmentConfirmationMessage(params: {
     `✂️ ${serviceName}`,
     professionalName && professionalName !== "Sem preferencia" ? `👤 ${professionalName}` : "",
     `💰 ${priceLabel}`,
-    "",
-    `Qualquer dúvida, responda esta mensagem.`,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  ].filter(Boolean);
+  const tail = ["", "Qualquer dúvida, responda esta mensagem."];
+  const historicoBlock = historicoUrl ? ["", "Acompanhe seus horários com a gente:", historicoUrl] : [];
+  return [...head, ...historicoBlock, ...tail].join("\n");
 }
 
 export function buildAppointmentConfirmationFromRow(
@@ -34,7 +44,8 @@ export function buildAppointmentConfirmationFromRow(
   businessName: string,
   serviceName: string,
   professionalName: string,
-  price: number
+  price: number,
+  historicoUrl?: string | null
 ): string {
   return buildAppointmentConfirmationMessage({
     clientName: appt.client_name,
@@ -44,6 +55,7 @@ export function buildAppointmentConfirmationFromRow(
     appointmentDate: appt.appointment_date,
     appointmentTime: appt.appointment_time,
     priceLabel: formatCurrency(price),
+    historicoUrl: historicoUrl ?? undefined,
   });
 }
 
@@ -119,4 +131,45 @@ export function buildAppointmentCancellationFromRow(
     appointmentTime: appt.appointment_time,
     kind,
   });
+}
+
+/** Dono do salão reagendou — avisa o cliente com link para o histórico público. */
+export function buildAppointmentRescheduledBySalonMessage(params: {
+  clientName: string;
+  businessName: string;
+  serviceName: string;
+  professionalName: string;
+  newAppointmentDate: string;
+  newAppointmentTime: string;
+  historicoUrl: string;
+}): string {
+  const {
+    clientName,
+    businessName,
+    serviceName,
+    professionalName,
+    newAppointmentDate,
+    newAppointmentTime,
+    historicoUrl,
+  } = params;
+  const first = clientName.split(/\s+/)[0] || clientName;
+  const profLine =
+    professionalName && professionalName !== "Sem preferencia" && professionalName !== "Sem preferência"
+      ? `👤 ${professionalName}`
+      : "";
+  return [
+    `Olá, ${first}!`,
+    "",
+    `Seu horário em *${businessName}* foi *reagendado* pelo salão.`,
+    "",
+    `✂️ ${serviceName}`,
+    profLine,
+    `📅 ${formatLongDate(newAppointmentDate)}`,
+    `🕐 ${formatTime(newAppointmentTime)}`,
+    "",
+    `Quer ver seus horários e serviços com a gente?`,
+    historicoUrl,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }

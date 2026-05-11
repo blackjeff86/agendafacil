@@ -95,6 +95,8 @@ export interface AppointmentRow {
   series_id?: string | null;
   /** Lembrete automático (D-1) já enviado ao cliente. */
   reminder_sent_at?: string | null;
+  /** Token opaco para link da página “meus horários” (sem telefone na URL). */
+  client_portal_token?: string | null;
 }
 
 export interface BusinessHourRow {
@@ -116,6 +118,24 @@ export interface SupportEventRow {
   title: string;
   details?: string | null;
   created_at?: string;
+}
+
+/** Retorno de get_public_client_snapshot (histórico público por telefone). */
+export interface PublicClientAppointmentSnapshot {
+  id: string;
+  service_id: string;
+  professional_id: string | null;
+  appointment_date: string;
+  appointment_time: string;
+  status: AppointmentStatus;
+  service_name: string;
+  professional_name: string;
+}
+
+export interface PublicClientSnapshotStats {
+  total_visitas: number;
+  total_reservados: number;
+  top_services: { service_id: string; service_name: string; cnt: number }[];
 }
 
 export interface ServiceDraft {
@@ -188,4 +208,6 @@ export interface LastBookingPayload {
   date: string;
   time: string;
   business: Business;
+  /** Token para link de histórico público (mensagem WhatsApp pós-reserva). */
+  portalToken?: string | null;
 }

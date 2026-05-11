@@ -183,6 +183,17 @@ alter table public.appointments add column if not exists occurrence_index int no
 alter table public.appointments add column if not exists reminder_sent_at timestamptz;
 comment on column public.appointments.reminder_sent_at is 'Preenchido pelo job diário ao enviar lembrete D-1 ao cliente (WhatsApp).';
 
+-- Link opaco para página pública “meus horários” (sem telefone na URL); rotacionado ao reagendar pelo salão ou pelo cliente.
+alter table public.appointments add column if not exists client_portal_token uuid;
+-- Backfill: só rode este UPDATE depois de publicar validate_appointment_integrity com “early exit” para metadados,
+-- ou desabilite o trigger: ALTER TABLE public.appointments DISABLE TRIGGER trg_validate_appointment_integrity;
+update public.appointments
+   set client_portal_token = gen_random_uuid()
+ where client_portal_token is null;
+alter table public.appointments alter column client_portal_token set default gen_random_uuid();
+create unique index if not exists idx_appointments_client_portal_token
+  on public.appointments (client_portal_token);
+
 create index if not exists idx_appointments_reminder_day
   on public.appointments (appointment_date)
   where reminder_sent_at is null and status = 'confirmado';
@@ -542,7 +553,12 @@ begin
     'series_id', v_series_id,
     'customer_id', v_customer_id,
     'appointment_ids', v_ids,
-    'occurrences', v_count
+    'occurrences', v_count,
+    'portal_token', (
+      select client_portal_token
+      from public.appointments
+      where id = v_ids[1]
+    )
   );
 end;
 $$;
@@ -682,14 +698,16 @@ $$;
 
 grant execute on function public.update_appointment_series(uuid, uuid, uuid, date, time, text, int, text) to authenticated;
 
--- Verifica disponibilidade de um horário
+-- Verifica disponibilidade de um horário (opcional: ignorar um agendamento ao reagendar)
 drop function if exists public.is_slot_available(uuid, uuid, uuid, date, time);
+drop function if exists public.is_slot_available(uuid, uuid, uuid, date, time, uuid);
 create or replace function public.is_slot_available(
   p_business_id uuid,
   p_service_id uuid,
   p_professional_id uuid,
   p_date date,
-  p_time time
+  p_time time,
+  p_exclude_appointment_id uuid default null
 ) returns boolean
 language sql
 stable
@@ -724,6 +742,7 @@ as $$
         and a.professional_id = ep.id
         and a.appointment_date = p_date
         and a.status not in ('cancelado')
+        and (p_exclude_appointment_id is null or a.id <> p_exclude_appointment_id)
         and (
           (a.appointment_time, (a.appointment_time + (s.duration || ' minutes')::interval)::time)
           overlaps
@@ -733,7 +752,268 @@ as $$
   );
 $$;
 
-grant execute on function public.is_slot_available(uuid, uuid, uuid, date, time) to anon, authenticated;
+grant execute on function public.is_slot_available(uuid, uuid, uuid, date, time, uuid) to anon, authenticated;
+
+-- Histórico público do cliente (telefone) + estatísticas por slug do salão
+drop function if exists public.get_public_client_snapshot(text, text);
+create or replace function public.get_public_client_snapshot(
+  p_slug text,
+  p_phone_digits text
+) returns json
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_business public.businesses%rowtype;
+  v_digits text;
+begin
+  v_digits := regexp_replace(coalesce(p_phone_digits, ''), '\D', '', 'g');
+  if length(v_digits) < 10 then
+    return json_build_object('ok', false, 'error', 'Informe um telefone valido com DDD.');
+  end if;
+
+  select * into v_business
+  from public.businesses
+  where slug = p_slug
+    and active = true
+  limit 1;
+
+  if v_business.id is null then
+    return json_build_object('ok', false, 'error', 'Negocio nao encontrado.');
+  end if;
+
+  return json_build_object(
+    'ok', true,
+    'business_name', v_business.name,
+    'slug', v_business.slug,
+    'appointments', (
+      select coalesce(json_agg(row_to_json(t) order by t.sort_date desc, t.sort_time desc), '[]'::json)
+      from (
+        select
+          a.id,
+          a.service_id,
+          a.professional_id,
+          a.appointment_date::text as appointment_date,
+          a.appointment_time::text as appointment_time,
+          a.status,
+          coalesce(s.name, '') as service_name,
+          coalesce(p.name, '') as professional_name,
+          a.appointment_date as sort_date,
+          a.appointment_time as sort_time
+        from public.appointments a
+        left join public.services s on s.id = a.service_id
+        left join public.professionals p on p.id = a.professional_id
+        where a.business_id = v_business.id
+          and (
+            regexp_replace(coalesce(a.client_phone, ''), '\D', '', 'g') = v_digits
+            or right(regexp_replace(coalesce(a.client_phone, ''), '\D', '', 'g'), 11) = right(v_digits, 11)
+          )
+      ) t
+    ),
+    'stats', (
+      select json_build_object(
+        'total_visitas', coalesce(count(*) filter (where a.status <> 'cancelado'), 0)::int,
+        'total_reservados', coalesce(count(*) filter (
+          where a.status in ('pendente', 'confirmado')
+            and (a.appointment_date > current_date
+              or (a.appointment_date = current_date and a.appointment_time >= current_time::time))
+        ), 0)::int,
+        'top_services', coalesce((
+          select json_agg(row_to_json(x) order by x.cnt desc)
+          from (
+            select s.id as service_id, s.name as service_name, count(*)::int as cnt
+            from public.appointments a
+            join public.services s on s.id = a.service_id
+            where a.business_id = v_business.id
+              and (
+                regexp_replace(coalesce(a.client_phone, ''), '\D', '', 'g') = v_digits
+                or right(regexp_replace(coalesce(a.client_phone, ''), '\D', '', 'g'), 11) = right(v_digits, 11)
+              )
+              and a.status <> 'cancelado'
+            group by s.id, s.name
+            order by cnt desc
+            limit 8
+          ) x
+        ), '[]'::json)
+      )
+      from public.appointments a
+      where a.business_id = v_business.id
+        and (
+          regexp_replace(coalesce(a.client_phone, ''), '\D', '', 'g') = v_digits
+          or right(regexp_replace(coalesce(a.client_phone, ''), '\D', '', 'g'), 11) = right(v_digits, 11)
+        )
+    )
+  );
+end;
+$$;
+
+grant execute on function public.get_public_client_snapshot(text, text) to anon, authenticated;
+
+-- Histórico público por token (sem expor telefone na URL)
+drop function if exists public.get_public_client_snapshot_by_token(text, uuid);
+create or replace function public.get_public_client_snapshot_by_token(
+  p_slug text,
+  p_token uuid
+) returns json
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_digits text;
+  v_slug text;
+begin
+  if p_token is null then
+    return json_build_object('ok', false, 'error', 'Link invalido.');
+  end if;
+
+  select
+    regexp_replace(coalesce(a.client_phone, ''), '\D', '', 'g'),
+    b.slug
+  into v_digits, v_slug
+  from public.appointments a
+  join public.businesses b on b.id = a.business_id
+  where a.client_portal_token = p_token
+    and b.active = true
+  limit 1;
+
+  if v_slug is null or v_slug <> p_slug or length(v_digits) < 10 then
+    return json_build_object('ok', false, 'error', 'Link invalido ou expirado. Peça um novo link ao salao.');
+  end if;
+
+  return public.get_public_client_snapshot(p_slug, v_digits);
+end;
+$$;
+
+grant execute on function public.get_public_client_snapshot_by_token(text, uuid) to anon, authenticated;
+
+-- Cliente final reagenda pelo link público (telefone deve bater com o agendamento)
+drop function if exists public.reschedule_public_appointment(uuid, text, date, time, uuid);
+create or replace function public.reschedule_public_appointment(
+  p_appointment_id uuid,
+  p_phone_digits text,
+  p_date date,
+  p_time time,
+  p_professional_id uuid default null
+) returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_appt public.appointments%rowtype;
+  v_digits text;
+  v_row_digits text;
+begin
+  v_digits := regexp_replace(coalesce(p_phone_digits, ''), '\D', '', 'g');
+  select * into v_appt from public.appointments where id = p_appointment_id;
+
+  if v_appt.id is null then
+    return json_build_object('ok', false, 'error', 'Agendamento nao encontrado.');
+  end if;
+
+  v_row_digits := regexp_replace(coalesce(v_appt.client_phone, ''), '\D', '', 'g');
+  if v_row_digits <> v_digits and right(v_row_digits, 11) <> right(v_digits, 11) then
+    return json_build_object('ok', false, 'error', 'Telefone nao confere com este agendamento.');
+  end if;
+
+  if v_appt.status = 'cancelado' then
+    return json_build_object('ok', false, 'error', 'Este agendamento esta cancelado.');
+  end if;
+
+  update public.appointments
+  set
+    appointment_date = p_date,
+    appointment_time = p_time,
+    professional_id = coalesce(p_professional_id, v_appt.professional_id)
+  where id = p_appointment_id;
+
+  return json_build_object('ok', true);
+exception
+  when others then
+    return json_build_object('ok', false, 'error', sqlerrm);
+end;
+$$;
+
+grant execute on function public.reschedule_public_appointment(uuid, text, date, time, uuid) to anon, authenticated;
+
+-- Reagendamento público com token (qualquer agendamento do mesmo cliente no salão pode portar o token)
+drop function if exists public.reschedule_public_appointment_by_token(uuid, uuid, date, time, uuid);
+create or replace function public.reschedule_public_appointment_by_token(
+  p_appointment_id uuid,
+  p_portal_token uuid,
+  p_date date,
+  p_time time,
+  p_professional_id uuid default null
+) returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_target public.appointments%rowtype;
+  v_holder public.appointments%rowtype;
+  v_td text;
+  v_hd text;
+  v_new_token uuid;
+begin
+  if p_portal_token is null then
+    return json_build_object('ok', false, 'error', 'Link invalido.');
+  end if;
+
+  select * into v_target from public.appointments where id = p_appointment_id;
+  select * into v_holder from public.appointments where client_portal_token = p_portal_token;
+
+  if v_target.id is null then
+    return json_build_object('ok', false, 'error', 'Agendamento nao encontrado.');
+  end if;
+
+  if v_holder.id is null then
+    return json_build_object('ok', false, 'error', 'Link invalido ou expirado.');
+  end if;
+
+  if v_holder.business_id <> v_target.business_id then
+    return json_build_object('ok', false, 'error', 'Link nao pertence a este salao.');
+  end if;
+
+  v_td := regexp_replace(coalesce(v_target.client_phone, ''), '\D', '', 'g');
+  v_hd := regexp_replace(coalesce(v_holder.client_phone, ''), '\D', '', 'g');
+  if v_td <> v_hd and right(v_td, 11) <> right(v_hd, 11) then
+    return json_build_object('ok', false, 'error', 'Link nao autorizado para este agendamento.');
+  end if;
+
+  if v_target.status = 'cancelado' then
+    return json_build_object('ok', false, 'error', 'Este agendamento esta cancelado.');
+  end if;
+
+  with u as (
+    update public.appointments
+    set
+      appointment_date = p_date,
+      appointment_time = p_time,
+      professional_id = coalesce(p_professional_id, v_target.professional_id),
+      client_portal_token = gen_random_uuid()
+    where id = p_appointment_id
+    returning client_portal_token
+  )
+  select client_portal_token into v_new_token from u;
+
+  -- Se o link era deste próprio agendamento, o token antigo deixa de valer; devolvemos o novo.
+  if v_holder.id = v_target.id then
+    return json_build_object('ok', true, 'portal_token', v_new_token);
+  end if;
+
+  return json_build_object('ok', true, 'portal_token', null);
+exception
+  when others then
+    return json_build_object('ok', false, 'error', sqlerrm);
+end;
+$$;
+
+grant execute on function public.reschedule_public_appointment_by_token(uuid, uuid, date, time, uuid) to anon, authenticated;
 
 drop function if exists public.assign_available_professional(uuid, uuid, date, time);
 create or replace function public.assign_available_professional(
@@ -798,6 +1078,21 @@ declare
   v_assigned uuid;
   v_conflict_exists boolean;
 begin
+  -- UPDATE só de metadados (token, lembrete): não revalida profissional/serviço — evita falha em agendamentos
+  -- antigos com profissional inativo ou regras de expediente alteradas depois.
+  if tg_op = 'UPDATE' then
+    if (old.business_id, old.customer_id, old.series_id, old.service_id, old.professional_id,
+        old.client_name, old.client_phone, old.client_email, old.client_notes,
+        old.appointment_date, old.appointment_time, old.occurrence_index, old.status)
+       is not distinct from
+       (new.business_id, new.customer_id, new.series_id, new.service_id, new.professional_id,
+        new.client_name, new.client_phone, new.client_email, new.client_notes,
+        new.appointment_date, new.appointment_time, new.occurrence_index, new.status)
+    then
+      return new;
+    end if;
+  end if;
+
   select * into v_service
   from public.services
   where id = new.service_id;

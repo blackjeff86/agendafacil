@@ -59,5 +59,17 @@ export function setTodayDate(): void {
 }
 
 export function getPublicAppUrl(slug: string): string {
-  return `${getAppBaseUrl()}/?slug=${slug}`;
+  return `${getAppBaseUrl()}/?slug=${encodeURIComponent(slug)}`;
+}
+
+/** Página pública “meus horários” com o mesmo telefone usado no agendamento (somente dígitos). */
+export function getPublicHistoricoUrl(slug: string, phoneDigits: string): string {
+  const base = getAppBaseUrl().replace(/\/$/, "");
+  return `${base}/?slug=${encodeURIComponent(slug)}&historico=1&tel=${encodeURIComponent(phoneDigits)}`;
+}
+
+/** Histórico público com token opaco (recomendado — sem telefone na URL). */
+export function getPublicHistoricoUrlByPortalToken(slug: string, portalToken: string): string {
+  const base = getAppBaseUrl().replace(/\/$/, "");
+  return `${base}/?slug=${encodeURIComponent(slug)}&historico=1&cv=${encodeURIComponent(portalToken)}`;
 }

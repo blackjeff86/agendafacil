@@ -130,6 +130,15 @@
   .time-btn{border:2px solid var(--border);background:#fff;border-radius:10px;padding:10px 4px;font-size:14px;font-weight:600;cursor:pointer;color:var(--sub);text-align:center;transition:all .2s;}
   .time-btn.selected{background:var(--brand);border-color:var(--brand);color:#fff;}
   .time-btn:disabled{opacity:.4;cursor:not-allowed;}
+  /* ── CLIENT HISTÓRICO PÚBLICO ── */
+  .historico-stats-row{display:flex;gap:12px;margin-top:8px;}
+  .historico-stat{flex:1;background:var(--card);border-radius:12px;padding:12px;text-align:center;box-shadow:var(--shadow);}
+  .historico-stat span{display:block;font-size:11px;color:var(--sub);margin-bottom:4px;}
+  .historico-stat strong{font-size:20px;font-weight:800;color:var(--text);}
+  .historico-top-list{list-style:none;padding:0;margin:0;}
+  .historico-top-list li{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:14px;}
+  .historico-top-list strong{font-weight:700;color:var(--brand);}
+  .pub-hero.historico-hero{padding-bottom:16px;}
   /* ── LOGIN ── */
   #loginPage{background:linear-gradient(160deg,var(--brand) 0%,var(--brand-dark) 100%);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;}
   .login-card{background:#fff;border-radius:24px;padding:32px 24px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.2);}

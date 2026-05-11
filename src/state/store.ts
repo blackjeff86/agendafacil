@@ -38,6 +38,8 @@ export interface AppState {
   currentFilter: string;
   selectedAppointment: AppointmentRow | null;
   editingAppointmentId: string | null;
+  /** Snapshot ao abrir "Editar" — usado para WhatsApp de reagendamento e validação. */
+  editingAppointmentOriginal: AppointmentRow | null;
   editingServiceId: string | null;
   editingProfessionalId: string | null;
   pendingConfirmAction: (() => Promise<void>) | null;
@@ -65,6 +67,7 @@ export const state: AppState = {
   currentFilter: "todos",
   selectedAppointment: null,
   editingAppointmentId: null,
+  editingAppointmentOriginal: null,
   editingServiceId: null,
   editingProfessionalId: null,
   pendingConfirmAction: null,

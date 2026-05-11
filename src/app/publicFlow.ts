@@ -6,11 +6,29 @@ import { onlyDigits } from "../utils/phone";
 import { bookingState, pubStepHistory, setBookingState, state } from "../state/store";
 import type { LastBookingPayload } from "../types";
 import { emptyStateHtml } from "../ui/components/emptyState";
-import { getPublicAppUrl, showLoading, showScreen, showToast, openModal } from "../ui/dom";
+import { getPublicAppUrl, getPublicHistoricoUrlByPortalToken, showLoading, showScreen, showToast, openModal } from "../ui/dom";
 import { applyPublicData, getFallbackPublic, loadPublicData, resetPublicBookingFlow } from "./publicData";
 import { fillSummary, renderDateScroll, renderPubProfs, renderPubServices } from "../ui/render/publicViews";
 
+export function hideHistoricoShell(): void {
+  document.getElementById("pubHistorico")?.classList.add("hidden");
+  document.getElementById("pubHistorico")?.classList.remove("active");
+}
+
+export function showHistoricoShell(): void {
+  document.querySelectorAll("#publicShell .page").forEach((page) => {
+    page.classList.add("hidden");
+    page.classList.remove("active");
+  });
+  const el = document.getElementById("pubHistorico");
+  if (el) {
+    el.classList.remove("hidden");
+    el.classList.add("active");
+  }
+}
+
 export function pubGoRaw(step: number): void {
+  hideHistoricoShell();
   document.querySelectorAll("#publicShell .page").forEach((page) => {
     page.classList.remove("active");
     page.classList.add("hidden");
@@ -187,7 +205,7 @@ export async function confirmBooking(): Promise<void> {
 
   showLoading(true);
   try {
-    const { error } = await appointmentService.createPublicBooking({
+    const { data: bookingResult, error } = await appointmentService.createPublicBooking({
       p_business_id: state.publicData.business.id,
       p_service_id: service.id,
       p_professional_id: professional?.id || null,
@@ -201,6 +219,10 @@ export async function confirmBooking(): Promise<void> {
       p_occurrences: recurrenceType === "none" ? 1 : recurrenceCount,
     });
     if (error) throw error;
+    const portalToken =
+      bookingResult && typeof bookingResult === "object" && "portal_token" in bookingResult
+        ? String((bookingResult as { portal_token?: string }).portal_token || "")
+        : "";
 
     document.querySelectorAll("#publicShell .page").forEach((page) => {
       page.classList.remove("active");
@@ -232,6 +254,7 @@ export async function confirmBooking(): Promise<void> {
       date: formatLongDate(bookingState.date),
       time: bookingState.time,
       business: state.publicData.business,
+      portalToken: portalToken || null,
     };
     window._lastBooking = payload;
   } catch (error) {
@@ -249,6 +272,10 @@ export function sendWAConfirmation(): void {
     booking.recurrenceType && booking.recurrenceType !== "none"
       ? `Recorrencia: ${formatRecurrenceLabel(booking.recurrenceType)} (${booking.recurrenceCount} agendamentos)\n`
       : "";
+  const historicoLine =
+    booking.portalToken && booking.business.slug
+      ? `\nAcompanhe seus horários com a gente:\n${getPublicHistoricoUrlByPortalToken(booking.business.slug, booking.portalToken)}\n`
+      : "";
   const message =
     `Ola, ${booking.name}! Seu agendamento foi reservado com sucesso em ${booking.business.name}.\n\n` +
     `Servico: ${booking.service.name}\n` +
@@ -256,8 +283,9 @@ export function sendWAConfirmation(): void {
     `Data: ${booking.date}\n` +
     `Horario: ${booking.time}\n` +
     recurrenceLine +
-    `Endereco: ${booking.business.address || "Nao informado"}\n\n` +
-    `Se precisar remarcar, fale conosco pelo WhatsApp.`;
+    `Endereco: ${booking.business.address || "Nao informado"}\n` +
+    historicoLine +
+    `\nSe precisar remarcar, fale conosco pelo WhatsApp.`;
   window._waMsg = message;
   const el = document.getElementById("waMessageText");
   if (el) el.textContent = message;

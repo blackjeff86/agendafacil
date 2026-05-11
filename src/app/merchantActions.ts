@@ -1,17 +1,20 @@
 import { countActiveProfessionals, isStarterPlan } from "../config/plans";
 import { DEFAULT_HOURS } from "../constants/defaults";
 import * as appointmentService from "../services/appointmentService";
+import { sendWhatsAppText } from "../services/whatsappOutbound";
 import * as businessService from "../services/businessService";
 import * as professionalService from "../services/professionalService";
 import * as serviceCatalogService from "../services/serviceCatalogService";
+import { findProfessional, findService } from "../state/selectors";
 import { state } from "../state/store";
-import type { AppointmentStatus } from "../types";
+import type { AppointmentRow, AppointmentStatus } from "../types";
 import { applyBusinessPreview, toggleCardMenu } from "../ui/render/merchantDashboard";
-import { formatCurrency } from "../utils/formatters";
+import { buildAppointmentRescheduledBySalonMessage } from "../utils/whatsappTemplates";
+import { formatCurrency, formatTime } from "../utils/formatters";
 import { getErrorMessage } from "../utils/errors";
 import { readFileAsDataUrl } from "../utils/files";
 import { slugify } from "../utils/strings";
-import { showLoading, showToast, openModal } from "../ui/dom";
+import { getPublicHistoricoUrlByPortalToken, showLoading, showToast, openModal } from "../ui/dom";
 import { closeAppointmentModal, closeModal } from "./appointmentActions";
 import { loadSupportBusinesses } from "./bootstrap";
 import { refreshAllBusinessData } from "./refresh";
@@ -386,12 +389,70 @@ export async function saveAppointment(): Promise<void> {
     return;
   }
 
+  const timeForRpc = formatTime(payload.appointment_time);
+  const slotOk = await appointmentService.isSlotAvailable({
+    businessId: state.business.id,
+    serviceId: payload.service_id,
+    professionalId: payload.professional_id,
+    date: payload.appointment_date,
+    time: timeForRpc,
+    excludeAppointmentId: isEditing ? state.editingAppointmentId : null,
+  });
+  if (!slotOk) {
+    showToast("Este horário não está disponível para o profissional escolhido. Use a grade de horários livres.");
+    return;
+  }
+
+  const orig = state.editingAppointmentOriginal;
+  const dateChanged = Boolean(isEditing && orig && orig.appointment_date !== payload.appointment_date);
+  const timeChanged = Boolean(isEditing && orig && formatTime(orig.appointment_time) !== timeForRpc);
+  const newPortalToken =
+    isEditing && orig && state.business.slug && (dateChanged || timeChanged) ? globalThis.crypto.randomUUID() : null;
+
   showLoading(true);
   try {
+    const updatePayload =
+      isEditing && newPortalToken ? { ...payload, client_portal_token: newPortalToken } : payload;
     const { error } = isEditing
-      ? await appointmentService.updateAppointment(state.editingAppointmentId!, payload)
+      ? await appointmentService.updateAppointment(state.editingAppointmentId!, updatePayload)
       : await appointmentService.insertAppointment(payload);
     if (error) throw error;
+
+    if (isEditing && orig && state.business.slug && newPortalToken && (dateChanged || timeChanged)) {
+      const svc = findService(payload.service_id);
+      const prof = findProfessional(payload.professional_id);
+      const merged: AppointmentRow = {
+        ...orig,
+        client_name: payload.client_name,
+        client_phone: payload.client_phone,
+        service_id: payload.service_id,
+        professional_id: payload.professional_id,
+        appointment_date: payload.appointment_date,
+        appointment_time: timeForRpc.length <= 5 ? `${timeForRpc}:00` : timeForRpc,
+        status: payload.status,
+        client_portal_token: newPortalToken,
+      };
+      const historicoUrl = getPublicHistoricoUrlByPortalToken(state.business.slug, newPortalToken);
+      const msg = buildAppointmentRescheduledBySalonMessage({
+        clientName: merged.client_name,
+        businessName: state.business.name,
+        serviceName: svc?.name || "Serviço",
+        professionalName: prof?.name || "",
+        newAppointmentDate: merged.appointment_date,
+        newAppointmentTime: merged.appointment_time,
+        historicoUrl,
+      });
+      const r = await sendWhatsAppText(merged.client_phone, msg);
+      closeAppointmentModal();
+      await refreshAllBusinessData();
+      let toastMsg = "Agendamento atualizado.";
+      if (r.usedApi && r.ok) toastMsg += " Cliente notificado (WhatsApp).";
+      else if (!r.usedApi && r.ok) toastMsg += " Abra o WhatsApp para avisar o cliente.";
+      else toastMsg += " Não foi possível abrir o WhatsApp — confira o telefone.";
+      showToast(toastMsg);
+      return;
+    }
+
     closeAppointmentModal();
     showToast(isEditing ? "Agendamento atualizado com sucesso." : "Agendamento criado com sucesso.");
     await refreshAllBusinessData();
