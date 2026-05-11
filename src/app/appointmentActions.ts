@@ -51,6 +51,28 @@ export function openApptDetail(id: string): void {
 
   const row = document.getElementById("seriesActionRow");
   if (row) row.style.display = series ? "flex" : "none";
+
+  const btnConf = document.getElementById("detailBtnConfirmar");
+  const btnDone = document.getElementById("detailBtnConcluir");
+  const btnCanc = document.getElementById("detailBtnCancelarStatus");
+  const toggle = (el: HTMLElement | null, visible: boolean) => {
+    if (el) el.classList.toggle("hidden", !visible);
+  };
+  const st = appointment.status;
+  if (st === "pendente") {
+    toggle(btnConf, true);
+    toggle(btnDone, false);
+    toggle(btnCanc, true);
+  } else if (st === "confirmado") {
+    toggle(btnConf, false);
+    toggle(btnDone, true);
+    toggle(btnCanc, true);
+  } else {
+    toggle(btnConf, false);
+    toggle(btnDone, false);
+    toggle(btnCanc, false);
+  }
+
   openModal("modalApptDetail");
 }
 
@@ -238,6 +260,8 @@ export async function updateAppointmentStatus(status: string): Promise<void> {
     let toastMsg = "Status atualizado com sucesso.";
     if (status === "confirmado" && previousStatus !== "confirmado") {
       toastMsg = await notifyAppointmentConfirmed(snapshot);
+    } else if (status === "concluido" && previousStatus !== "concluido") {
+      toastMsg = "Atendimento marcado como concluído.";
     } else if (status === "cancelado" && previousStatus !== "cancelado") {
       const note = await notifyCustomerCancellation(snapshot, "status_cancelado");
       toastMsg = `Agendamento cancelado. ${note}`;

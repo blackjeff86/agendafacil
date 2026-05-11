@@ -100,11 +100,12 @@ export function renderDashboard(): void {
           const service = findService(appointment.service_id);
           const professional = findProfessional(appointment.professional_id);
           const status = STATUS_LABELS[appointment.status] || STATUS_LABELS.pendente;
+          const doneCls = appointment.status === "concluido" ? " appt-name-done" : "";
           return `
             <div class="appt-item" onclick="openApptDetail('${appointment.id}')">
               <div class="appt-time">${formatTime(appointment.appointment_time)}</div>
               <div class="appt-info">
-                <div class="name">${appointment.client_name}</div>
+                <div class="name${doneCls}">${appointment.client_name}</div>
                 <div class="detail">${service?.name || "Servico"} · ${professional?.name || "Sem preferencia"}</div>
               </div>
               <span class="badge ${status.cls}">${status.label}</span>
@@ -132,6 +133,7 @@ export function renderApptList(filter: string): void {
           const recurrenceBadge = appointment.series_id
             ? `<span class="chip" style="margin:0 0 0 8px;padding:2px 8px;font-size:10px;">Recorrente</span>`
             : "";
+          const doneCls = appointment.status === "concluido" ? " appt-name-done" : "";
           return `
             <div class="appt-item" onclick="openApptDetail('${appointment.id}')">
               <div>
@@ -139,7 +141,7 @@ export function renderApptList(filter: string): void {
                 <div class="text-xs text-sub">${dateStr}</div>
               </div>
               <div class="appt-info">
-                <div class="name">${appointment.client_name}${recurrenceBadge}</div>
+                <div class="name${doneCls}">${appointment.client_name}${recurrenceBadge}</div>
                 <div class="detail">${service?.name || "Servico"} · ${professional?.emoji || "👤"} ${professional?.name || "Sem preferencia"}</div>
               </div>
               <span class="badge ${status.cls}">${status.label}</span>

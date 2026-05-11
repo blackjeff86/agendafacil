@@ -1081,13 +1081,14 @@ begin
   -- UPDATE só de metadados (token, lembrete): não revalida profissional/serviço — evita falha em agendamentos
   -- antigos com profissional inativo ou regras de expediente alteradas depois.
   if tg_op = 'UPDATE' then
+    -- Inclui mudança só de status (ex.: confirmado → concluído) sem revalidar profissional/serviço.
     if (old.business_id, old.customer_id, old.series_id, old.service_id, old.professional_id,
         old.client_name, old.client_phone, old.client_email, old.client_notes,
-        old.appointment_date, old.appointment_time, old.occurrence_index, old.status)
+        old.appointment_date, old.appointment_time, old.occurrence_index)
        is not distinct from
        (new.business_id, new.customer_id, new.series_id, new.service_id, new.professional_id,
         new.client_name, new.client_phone, new.client_email, new.client_notes,
-        new.appointment_date, new.appointment_time, new.occurrence_index, new.status)
+        new.appointment_date, new.appointment_time, new.occurrence_index)
     then
       return new;
     end if;
