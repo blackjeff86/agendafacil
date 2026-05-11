@@ -295,6 +295,11 @@
   .modal-sheet .font-bold.text-lg{font-size:22px;letter-spacing:-.03em;color:#0f172a;}
   .modal-sheet .text-sm.text-sub{color:#64748b;line-height:1.55;}
   .modal-handle{width:46px;height:5px;background:#d8d2f3;border-radius:999px;margin:0 auto 20px;}
+  .appt-detail-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px;}
+  .appt-detail-action{width:100%;min-width:0;justify-content:center;text-align:center;padding-inline:12px;}
+  .appt-detail-footer-actions{display:flex;flex-direction:column;gap:10px;margin-top:12px;}
+  .appt-detail-delete{width:100%;justify-content:center;text-align:center;}
+  .appt-detail-close{width:100%;}
   /* ── FLOATING ACTION BTN ── */
   .fab{position:fixed;bottom:80px;right:16px;width:56px;height:56px;border-radius:50%;background:var(--brand);color:#fff;border:none;font-size:28px;cursor:pointer;box-shadow:0 4px 20px rgba(124,58,237,.4);display:flex;align-items:center;justify-content:center;z-index:90;}
   /* ── WEEK GRID ── */
@@ -641,6 +646,9 @@
     .pub-choice-card{padding:18px!important;}
     .modal-sheet{padding:22px 18px 18px;}
     .modal-sheet .font-bold.text-lg{font-size:20px;}
+    .appt-detail-actions{grid-template-columns:1fr 1fr;gap:10px;}
+    .appt-detail-action{min-height:52px;font-size:14px;line-height:1.25;}
+    .appt-detail-delete,.appt-detail-close{min-height:46px;}
     .summary-row{align-items:flex-start;}
     .landing-page .btn{padding:12px 16px;font-size:15px;border-radius:12px;}
     .landing-topbar{padding:10px 10px 10px 12px;border-radius:18px;}

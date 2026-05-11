@@ -1379,18 +1379,20 @@
         <div class="summary-row"><span class="label">Valor</span><span class="value text-brand" id="detailPrice">—</span></div>
         <div class="summary-row"><span class="label">Status</span><span id="detailStatus">—</span></div>
       </div>
-      <div class="flex gap-2">
-        <button class="btn btn-link flex-1" type="button" onclick="editAppointmentFromDetail()">Editar / reagendar</button>
-        <button class="btn btn-success flex-1" id="detailConfirmBtn" type="button" onclick="updateAppointmentStatus('confirmado')">Confirmar</button>
-        <button class="btn btn-brand flex-1" id="detailDoneBtn" type="button" onclick="updateAppointmentStatus('concluido')">Atendimento realizado</button>
-        <button class="btn btn-danger flex-1" id="detailCancelBtn" type="button" onclick="updateAppointmentStatus('cancelado')">Cancelar</button>
+      <div class="appt-detail-actions">
+        <button class="btn btn-link appt-detail-action" type="button" onclick="editAppointmentFromDetail()">Editar / reagendar</button>
+        <button class="btn btn-success appt-detail-action" id="detailConfirmBtn" type="button" onclick="updateAppointmentStatus('confirmado')">Confirmar</button>
+        <button class="btn btn-brand appt-detail-action" id="detailDoneBtn" type="button" onclick="updateAppointmentStatus('concluido')">Atendimento realizado</button>
+        <button class="btn btn-danger appt-detail-action" id="detailCancelBtn" type="button" onclick="updateAppointmentStatus('cancelado')">Cancelar</button>
       </div>
       <div class="flex gap-2 mt-2" id="seriesActionRow" style="display:none;">
         <button class="btn btn-link flex-1" type="button" onclick="openSeriesEditModal()">Editar recorrência</button>
         <button class="btn btn-danger flex-1" type="button" onclick="deleteCurrentSeries()">Excluir recorrência</button>
       </div>
-      <button class="btn btn-link btn-sm mt-2" style="margin-left:auto;" type="button" onclick="confirmDeleteAppointment()">Excluir agendamento</button>
-      <button class="btn btn-ghost mt-2" type="button" onclick="closeModal('modalApptDetail')">Fechar</button>
+      <div class="appt-detail-footer-actions">
+        <button class="btn btn-link btn-sm appt-detail-delete" type="button" onclick="confirmDeleteAppointment()">Excluir agendamento</button>
+        <button class="btn btn-ghost appt-detail-close" type="button" onclick="closeModal('modalApptDetail')">Fechar</button>
+      </div>
     </div>
   </div>
 
