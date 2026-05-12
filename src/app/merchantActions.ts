@@ -213,7 +213,7 @@ function renderServiceCategoryOptions(selectedCategory = ""): void {
   if (!list || !input) return;
   list.innerHTML = getServiceCategoryOptions().map((category) => `<option value="${category}"></option>`).join("");
   if (!input.value) {
-    input.value = selectedCategory || DEFAULT_SERVICE_CATEGORIES[0];
+    input.value = selectedCategory;
   }
 }
 
@@ -523,13 +523,13 @@ export function resetServiceModal(): void {
   if (saveBtn) saveBtn.textContent = "Salvar Serviço";
   t("newServiceName", "");
   t("newServiceDescription", "");
-  t("newServiceCategory", DEFAULT_SERVICE_CATEGORIES[0]);
+  t("newServiceCategory", "");
   t("newServicePrice", "");
   t("newServiceDuration", "");
   t("newServiceIcon", "");
   const active = document.getElementById("newServiceActive") as HTMLInputElement | null;
   if (active) active.checked = true;
-  renderServiceCategoryOptions(DEFAULT_SERVICE_CATEGORIES[0]);
+  renderServiceCategoryOptions("");
   renderServiceIconPicker("");
 }
 
@@ -574,12 +574,12 @@ export function editService(serviceId: string): void {
   if (saveBtn) saveBtn.textContent = "Salvar Alterações";
   (document.getElementById("newServiceName") as HTMLInputElement).value = service.name || "";
   (document.getElementById("newServiceDescription") as HTMLTextAreaElement).value = service.description || "";
-  (document.getElementById("newServiceCategory") as HTMLInputElement).value = service.category || DEFAULT_SERVICE_CATEGORIES[0];
+  (document.getElementById("newServiceCategory") as HTMLInputElement).value = service.category || "";
   (document.getElementById("newServicePrice") as HTMLInputElement).value = String(service.price || "");
   (document.getElementById("newServiceDuration") as HTMLInputElement).value = String(service.duration || "");
   (document.getElementById("newServiceIcon") as HTMLInputElement).value = service.icon || "";
   (document.getElementById("newServiceActive") as HTMLInputElement).checked = Boolean(service.active);
-  renderServiceCategoryOptions(service.category || DEFAULT_SERVICE_CATEGORIES[0]);
+  renderServiceCategoryOptions(service.category || "");
   renderServiceIconPicker(service.icon || "");
   openModal("modalNovoServico");
 }
@@ -592,7 +592,15 @@ export function openServiceCategoryManager(): void {
     a.localeCompare(b, "pt-BR")
   );
   empty.style.display = categories.length ? "none" : "block";
-  list.innerHTML = categories
+  const createRow = `
+    <div class="category-manager-item">
+      <input type="text" id="service-cat-new" value="" placeholder="Nova categoria" />
+      <div class="category-manager-actions">
+        <button class="btn btn-brand btn-sm" type="button" onclick="applyNewServiceCategory()">Usar no serviço</button>
+      </div>
+    </div>
+  `;
+  const existingRows = categories
     .map(
       (category) => `
         <div class="category-manager-item">
@@ -605,11 +613,25 @@ export function openServiceCategoryManager(): void {
       `
     )
     .join("");
+  list.innerHTML = `${createRow}${existingRows}`;
   openModal("modalServiceCategories");
 }
 
 export function closeServiceCategoryManager(): void {
   closeModal("modalServiceCategories");
+}
+
+export function applyNewServiceCategory(): void {
+  const nextCategory = (document.getElementById("service-cat-new") as HTMLInputElement | null)?.value?.trim() || "";
+  if (!nextCategory) {
+    showToast("Digite o nome da nova categoria.");
+    return;
+  }
+  const serviceCategoryInput = document.getElementById("newServiceCategory") as HTMLInputElement | null;
+  if (!serviceCategoryInput) return;
+  serviceCategoryInput.value = nextCategory;
+  renderServiceCategoryOptions(nextCategory);
+  closeServiceCategoryManager();
 }
 
 export async function renameServiceCategory(encodedOldCategory: string): Promise<void> {
@@ -645,7 +667,7 @@ export async function deleteServiceCategory(encodedCategory: string): Promise<vo
     showToast("Categoria removida dos serviços.");
     if (state.business) await refreshAllBusinessData();
     if (state.isPlatformAdmin) await loadSupportBusinesses();
-    renderServiceCategoryOptions(DEFAULT_SERVICE_CATEGORIES[0]);
+    renderServiceCategoryOptions("");
     openServiceCategoryManager();
   } catch (error) {
     console.error(error);
