@@ -53,6 +53,7 @@ export interface AppState {
   publicData: PublicData;
   publicCustomerPortal: CustomerPortalData | null;
   customerPortalSelectedDate: string | null;
+  customerPortalStatusFilter: string;
   customerPortalSelectedAppointmentId: string | null;
 }
 
@@ -90,6 +91,7 @@ export const state: AppState = {
   },
   publicCustomerPortal: null,
   customerPortalSelectedDate: null,
+  customerPortalStatusFilter: "todos",
   customerPortalSelectedAppointmentId: null,
 };
 

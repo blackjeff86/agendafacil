@@ -12,12 +12,23 @@ import {
   buildAppointmentConfirmationFromRow,
   buildAppointmentConfirmationTemplateFromRow,
   buildAppointmentRescheduledFromRow,
-  buildAppointmentRescheduledTemplateFromRow,
   type AppointmentCancellationKind,
 } from "../utils/whatsappTemplates";
 import { getCustomerPortalUrl, showLoading, showToast, openModal, closeModal as closeModalEl } from "../ui/dom";
 import { refreshAllBusinessData } from "./refresh";
 import { createSupportEvent } from "./supportEvents";
+
+function normalizeName(value: string): string {
+  return (value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function normalizePhone(value: string): string {
+  return (value || "").replace(/\D/g, "");
+}
 
 export function closeModal(id: string): void {
   closeModalEl(id);
@@ -235,9 +246,11 @@ async function notifyCustomerCancellation(appt: AppointmentRow, kind: Appointmen
 function getCustomerPortalText(appt: AppointmentRow): string | null {
   const customer =
     state.customers.find((item) => item.id === appt.customer_id) ||
-    state.customers.find((item) => item.phone === appt.client_phone);
+    state.customers.find(
+      (item) => normalizePhone(item.phone) === normalizePhone(appt.client_phone) && normalizeName(item.name) === normalizeName(appt.client_name)
+    );
   if (!customer?.portal_token) return null;
-  return `Acompanhe seus horários e reagende quando precisar: ${getCustomerPortalUrl(customer.portal_token)}`;
+  return `Acompanhe seus horários, aprove alterações e reagende quando precisar: ${getCustomerPortalUrl(customer.portal_token)}`;
 }
 
 async function notifyAppointmentConfirmed(appt: AppointmentRow): Promise<string> {
@@ -286,26 +299,7 @@ async function notifyAppointmentRescheduled(appt: AppointmentRow): Promise<strin
   const businessName = state.business?.name || "Nosso estabelecimento";
   const svc = findService(appt.service_id);
   const prof = findProfessional(appt.professional_id);
-  const canAutomate = canUseAutomaticCustomerWhatsApp(state.business);
   const portalText = getCustomerPortalText(appt);
-  if (canAutomate) {
-    const template = buildAppointmentRescheduledTemplateFromRow(
-      appt,
-      businessName,
-      svc?.name || "Serviço",
-      prof?.name || "",
-      Number(svc?.price ?? 0)
-    );
-    if (template) {
-      const templateResult = await sendWhatsAppTemplate(appt.client_phone, template);
-      if (templateResult.ok) {
-        if (portalText) {
-          await sendWhatsAppText(appt.client_phone, portalText, { preferApi: true });
-        }
-        return "Reagendamento confirmado. Mensagem enviada ao cliente (template WhatsApp).";
-      }
-    }
-  }
   const msg = [
     buildAppointmentRescheduledFromRow(
       appt,
@@ -318,9 +312,9 @@ async function notifyAppointmentRescheduled(appt: AppointmentRow): Promise<strin
   ]
     .filter(Boolean)
     .join("\n\n");
-  const r = await sendWhatsAppText(appt.client_phone, msg, { preferApi: canAutomate });
-  if (r.usedApi && r.ok) return "Reagendamento confirmado. Mensagem enviada ao cliente (WhatsApp API).";
-  if (!r.usedApi && r.ok) return "Reagendamento salvo. Abra o WhatsApp para avisar o cliente.";
+  const r = await sendWhatsAppText(appt.client_phone, msg, { preferApi: canUseAutomaticCustomerWhatsApp(state.business) });
+  if (r.usedApi && r.ok) return "Proposta de reagendamento enviada ao cliente (WhatsApp API).";
+  if (!r.usedApi && r.ok) return "Reagendamento salvo. Abra o WhatsApp para enviar a proposta ao cliente.";
   return "Reagendamento salvo, mas não foi possível preparar a mensagem ao cliente.";
 }
 
@@ -334,7 +328,10 @@ export async function updateAppointmentStatus(status: AppointmentStatus): Promis
   }
   showLoading(true);
   try {
-    const { error } = await appointmentService.updateAppointment(state.selectedAppointment.id, { status });
+    const { error } = await appointmentService.updateAppointment(state.selectedAppointment.id, {
+      status,
+      client_reapproval_required: status === "pendente" ? snapshot.client_reapproval_required ?? false : false,
+    });
     if (error) throw error;
     state.selectedAppointment = { ...snapshot, status };
     closeModal("modalApptDetail");

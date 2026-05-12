@@ -467,7 +467,13 @@ export function selectCustomerPortalDate(date: string): void {
 
 export function clearCustomerPortalDateFilter(): void {
   state.customerPortalSelectedDate = null;
+  state.customerPortalStatusFilter = "todos";
   renderCustomerPortalDateScroll();
+  renderCustomerPortalAppointments();
+}
+
+export function selectCustomerPortalStatusFilter(status: string): void {
+  state.customerPortalStatusFilter = status;
   renderCustomerPortalAppointments();
 }
 
@@ -618,6 +624,27 @@ export async function confirmCustomerPortalReschedule(): Promise<void> {
     modal?.classList.remove("open");
     renderCustomerPortal();
     showToast("Reagendamento solicitado com sucesso.");
+  } catch (error) {
+    console.error(error);
+    showToast(getFriendlyAppointmentError(error));
+  } finally {
+    showLoading(false);
+  }
+}
+
+export async function approveCustomerPortalAppointment(appointmentId: string): Promise<void> {
+  const portal = state.publicCustomerPortal;
+  if (!portal?.customer.portal_token) return;
+  showLoading(true);
+  try {
+    const updated = await customerPortalService.approveCustomerPortalAppointment({
+      portalToken: portal.customer.portal_token,
+      appointmentId,
+    });
+    portal.appointments = portal.appointments.map((item) => (item.id === updated.id ? updated : item));
+    state.publicCustomerPortal = { ...portal };
+    renderCustomerPortal();
+    showToast("Novo horário aprovado com sucesso.");
   } catch (error) {
     console.error(error);
     showToast(getFriendlyAppointmentError(error));

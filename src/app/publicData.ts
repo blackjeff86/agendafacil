@@ -115,6 +115,7 @@ export async function loadPublicData(slug: string): Promise<void> {
 export function applyCustomerPortalData(data: CustomerPortalData): void {
   state.publicCustomerPortal = data;
   state.customerPortalSelectedDate = null;
+  state.customerPortalStatusFilter = "todos";
   state.customerPortalSelectedAppointmentId = null;
 }
 

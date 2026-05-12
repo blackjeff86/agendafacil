@@ -82,8 +82,14 @@ create table if not exists public.customers (
   last_booking_at timestamptz,
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
-  unique (business_id, phone)
+  unique (business_id, name, phone)
 );
+
+alter table public.customers drop constraint if exists customers_business_id_phone_key;
+alter table public.customers drop constraint if exists customers_business_id_name_phone_key;
+alter table public.customers
+  add constraint customers_business_id_name_phone_key
+  unique (business_id, name, phone);
 
 alter table public.customers add column if not exists portal_token text;
 update public.customers
@@ -191,6 +197,7 @@ create table if not exists public.appointments (
   occurrence_index int not null default 1,
   status           text not null default 'pendente'
     check (status in ('pendente','confirmado','concluido','cancelado')),
+  client_reapproval_required boolean default false,
   created_at       timestamptz default now()
 );
 
@@ -198,6 +205,7 @@ alter table public.appointments add column if not exists customer_id uuid refere
 alter table public.appointments add column if not exists series_id uuid references public.appointment_series(id) on delete set null;
 alter table public.appointments add column if not exists client_email text;
 alter table public.appointments add column if not exists occurrence_index int not null default 1;
+alter table public.appointments add column if not exists client_reapproval_required boolean default false;
 
 alter table public.appointments add column if not exists reminder_sent_at timestamptz;
 comment on column public.appointments.reminder_sent_at is 'Preenchido pelo job diário ao enviar lembrete D-1 ao cliente (WhatsApp).';
@@ -519,9 +527,8 @@ begin
 
   insert into public.customers (business_id, name, email, phone, notes, last_booking_at, updated_at)
   values (p_business_id, p_client_name, nullif(trim(p_client_email), ''), p_client_phone, nullif(trim(p_client_notes), ''), now(), now())
-  on conflict (business_id, phone) do update
-    set name = excluded.name,
-        email = coalesce(excluded.email, public.customers.email),
+  on conflict (business_id, name, phone) do update
+    set email = coalesce(excluded.email, public.customers.email),
         notes = coalesce(excluded.notes, public.customers.notes),
         last_booking_at = now(),
         updated_at = now()
@@ -650,10 +657,10 @@ begin
       select jsonb_agg(to_jsonb(a) order by a.appointment_date asc, a.appointment_time asc)
       from public.appointments a
       where a.business_id = v_customer.business_id
-        and (
-          a.customer_id = v_customer.id
-          or regexp_replace(coalesce(a.client_phone, ''), '\D', '', 'g') = regexp_replace(coalesce(v_customer.phone, ''), '\D', '', 'g')
-        )
+        and regexp_replace(lower(coalesce(a.client_name, '')), '[^a-z0-9]', '', 'g')
+            = regexp_replace(lower(coalesce(v_customer.name, '')), '[^a-z0-9]', '', 'g')
+        and regexp_replace(coalesce(a.client_phone, ''), '\D', '', 'g')
+            = regexp_replace(coalesce(v_customer.phone, ''), '\D', '', 'g')
     ), '[]'::jsonb),
     'services', coalesce((
       select jsonb_agg(to_jsonb(s) order by s.created_at asc)
@@ -715,10 +722,10 @@ begin
   from public.appointments
   where id = p_appointment_id
     and business_id = v_customer.business_id
-    and (
-      customer_id = v_customer.id
-      or regexp_replace(coalesce(client_phone, ''), '\D', '', 'g') = regexp_replace(coalesce(v_customer.phone, ''), '\D', '', 'g')
-    );
+    and regexp_replace(lower(coalesce(client_name, '')), '[^a-z0-9]', '', 'g')
+        = regexp_replace(lower(coalesce(v_customer.name, '')), '[^a-z0-9]', '', 'g')
+    and regexp_replace(coalesce(client_phone, ''), '\D', '', 'g')
+        = regexp_replace(coalesce(v_customer.phone, ''), '\D', '', 'g');
 
   if v_appointment.id is null then
     raise exception 'Agendamento não encontrado.';
@@ -732,6 +739,7 @@ begin
      set appointment_date = p_appointment_date,
          appointment_time = p_appointment_time,
          status = 'pendente',
+         client_reapproval_required = false,
          reminder_sent_at = null
    where id = v_appointment.id
    returning * into v_appointment;
@@ -743,6 +751,71 @@ end;
 $$;
 
 grant execute on function public.reschedule_customer_portal_appointment(text, uuid, date, time) to anon, authenticated;
+
+create or replace function public.approve_customer_portal_appointment(
+  p_portal_token text,
+  p_appointment_id uuid
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_customer public.customers%rowtype;
+  v_business public.businesses%rowtype;
+  v_appointment public.appointments%rowtype;
+begin
+  select *
+    into v_customer
+  from public.customers
+  where portal_token = p_portal_token;
+
+  if v_customer.id is null then
+    raise exception 'Área do cliente não encontrada.';
+  end if;
+
+  select *
+    into v_business
+  from public.businesses
+  where id = v_customer.business_id
+    and active = true;
+
+  if v_business.id is null then
+    raise exception 'Negócio indisponível.';
+  end if;
+
+  select *
+    into v_appointment
+  from public.appointments
+  where id = p_appointment_id
+    and business_id = v_customer.business_id
+    and regexp_replace(lower(coalesce(client_name, '')), '[^a-z0-9]', '', 'g')
+        = regexp_replace(lower(coalesce(v_customer.name, '')), '[^a-z0-9]', '', 'g')
+    and regexp_replace(coalesce(client_phone, ''), '\D', '', 'g')
+        = regexp_replace(coalesce(v_customer.phone, ''), '\D', '', 'g');
+
+  if v_appointment.id is null then
+    raise exception 'Agendamento não encontrado.';
+  end if;
+
+  if v_appointment.status in ('cancelado', 'concluido') then
+    raise exception 'Esse agendamento não pode ser aprovado.';
+  end if;
+
+  update public.appointments
+     set status = 'confirmado',
+         client_reapproval_required = false,
+         reminder_sent_at = null
+   where id = v_appointment.id
+   returning * into v_appointment;
+
+  return jsonb_build_object(
+    'appointment', to_jsonb(v_appointment)
+  );
+end;
+$$;
+
+grant execute on function public.approve_customer_portal_appointment(text, uuid) to anon, authenticated;
 
 create or replace function public.delete_appointment_series(
   p_series_id uuid

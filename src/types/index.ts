@@ -98,6 +98,7 @@ export interface AppointmentRow {
   appointment_date: string;
   appointment_time: string;
   status: AppointmentStatus;
+  client_reapproval_required?: boolean | null;
   series_id?: string | null;
   /** Lembrete automático (D-1) já enviado ao cliente. */
   reminder_sent_at?: string | null;

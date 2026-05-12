@@ -11,10 +11,12 @@ declare global {
     showCustomerPortal: () => void;
     selectCustomerPortalDate: (dateIso: string) => void;
     clearCustomerPortalDateFilter: () => void;
+    selectCustomerPortalStatusFilter: (status: string) => void;
     openCustomerPortalReschedule: (appointmentId: string) => void;
     selectCustomerPortalRescheduleDate: (dateIso: string) => void;
     selectCustomerPortalRescheduleTime: (time: string) => void;
     confirmCustomerPortalReschedule: () => Promise<void>;
+    approveCustomerPortalAppointment: (appointmentId: string) => Promise<void>;
     closeCustomerPortalRescheduleModal: () => void;
     selectSecondDate: (dateIso: string) => void;
     selectSecondTime: (time: string) => void;

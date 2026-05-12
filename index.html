@@ -977,12 +977,13 @@
     <div id="publicClientPortal" class="page page-nopad hidden">
       <div class="pub-hero pub-hero-portal">
         <div class="biz-logo" id="clientPortalHeroEmoji">👋</div>
-        <div class="portal-kicker">Área do cliente</div>
-        <h1 id="clientPortalHeroName">Seus agendamentos</h1>
+        <div class="portal-kicker" id="clientPortalHeroKicker">Área do cliente</div>
+        <h1 id="clientPortalHeroName">AgendaFácil</h1>
         <p id="clientPortalHeroText">Acompanhe seus horários e reagende quando precisar.</p>
         <div class="meta">
-          <span id="clientPortalBusinessMeta">AgendaFácil</span>
-          <span id="clientPortalPhoneMeta">WhatsApp</span>
+          <span id="clientPortalAddressMeta">📍 Seu endereço</span>
+          <span id="clientPortalWhatsappMeta">💬 WhatsApp</span>
+          <span id="clientPortalHoursMeta">🕐 09h-18h</span>
         </div>
       </div>
 
@@ -1002,6 +1003,13 @@
 
         <div class="card card-sm">
           <div class="section-title" style="margin-bottom:10px;">Sua agenda</div>
+          <div class="filter-pills mb-3" id="clientPortalStatusFilters">
+            <button class="pill active" type="button" onclick="selectCustomerPortalStatusFilter('todos')">Todos</button>
+            <button class="pill" type="button" onclick="selectCustomerPortalStatusFilter('confirmado')">Confirmados</button>
+            <button class="pill" type="button" onclick="selectCustomerPortalStatusFilter('pendente')">Pendentes</button>
+            <button class="pill" type="button" onclick="selectCustomerPortalStatusFilter('concluido')">Atendidos</button>
+            <button class="pill" type="button" onclick="selectCustomerPortalStatusFilter('cancelado')">Cancelados</button>
+          </div>
           <div id="clientPortalAppointmentList"></div>
         </div>
       </div>

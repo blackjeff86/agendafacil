@@ -46,3 +46,15 @@ export async function rescheduleCustomerPortalAppointment(params: {
   if (error) throw error;
   return ((data || {}) as { appointment?: AppointmentRow }).appointment as AppointmentRow;
 }
+
+export async function approveCustomerPortalAppointment(params: {
+  portalToken: string;
+  appointmentId: string;
+}): Promise<AppointmentRow> {
+  const { data, error } = await getSupabase().rpc("approve_customer_portal_appointment", {
+    p_portal_token: params.portalToken,
+    p_appointment_id: params.appointmentId,
+  });
+  if (error) throw error;
+  return ((data || {}) as { appointment?: AppointmentRow }).appointment as AppointmentRow;
+}

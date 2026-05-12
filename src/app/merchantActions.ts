@@ -873,9 +873,11 @@ export async function saveAppointment(): Promise<void> {
   const previousAppointment = isEditing && state.selectedAppointment ? { ...state.selectedAppointment } : null;
 
   const formValues = getAppointmentModalPayload();
+  const baseStatus = (isEditing ? state.selectedAppointment?.status || "confirmado" : "confirmado") as AppointmentStatus;
   const payload = {
     ...formValues,
-    status: (isEditing ? state.selectedAppointment?.status || "confirmado" : "confirmado") as AppointmentStatus,
+    status: baseStatus,
+    client_reapproval_required: false,
   };
 
   if (!payload.client_name || !payload.client_phone || !payload.service_id || !payload.appointment_date || !payload.appointment_time) {
@@ -898,6 +900,16 @@ export async function saveAppointment(): Promise<void> {
 
   showLoading(true);
   try {
+    if (isEditing && previousAppointment) {
+      const changedTiming = hasAppointmentBeenRescheduled(previousAppointment, {
+        ...previousAppointment,
+        ...payload,
+      } as typeof previousAppointment);
+      if (changedTiming && previousAppointment.status !== "cancelado" && previousAppointment.status !== "concluido") {
+        payload.status = "pendente";
+        payload.client_reapproval_required = true;
+      }
+    }
     const { error } = isEditing
       ? await appointmentService.updateAppointment(state.editingAppointmentId!, payload)
       : await appointmentService.insertAppointment(payload);

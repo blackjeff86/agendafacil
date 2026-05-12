@@ -156,7 +156,7 @@ export function buildAppointmentRescheduledMessage(params: {
   return [
     `Olá, ${first}! ${EMOJI_WAVE}`,
     "",
-    `Seu agendamento em *${businessName}* foi *ajustado pelo salão* e já está *confirmado*.`,
+    `O salão *${businessName}* sugeriu um *novo horário* para o seu agendamento.`,
     "",
     `${EMOJI_CALENDAR} ${formatLongDate(appointmentDate)}`,
     `${EMOJI_CLOCK} ${formatTime(appointmentTime)}`,
@@ -164,7 +164,7 @@ export function buildAppointmentRescheduledMessage(params: {
     professionalName && professionalName !== "Sem preferencia" ? `${EMOJI_PERSON} ${professionalName}` : "",
     `${EMOJI_MONEY} ${priceLabel}`,
     "",
-    `Se precisar de algo, responda esta mensagem.`,
+    `Para aceitar esse novo horário, acesse sua área do cliente pelo link abaixo.`,
   ]
     .filter(Boolean)
     .join("\n");
