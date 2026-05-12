@@ -243,14 +243,38 @@ async function notifyCustomerCancellation(appt: AppointmentRow, kind: Appointmen
   return "Não foi possível preparar o WhatsApp — confira o telefone do cliente.";
 }
 
-function getCustomerPortalText(appt: AppointmentRow): string | null {
-  const customer =
+/**
+ * Monta o texto com o link da área do cliente para anexar às mensagens de WhatsApp.
+ * Busca primeiro no state local (rápido), depois no Supabase como fallback
+ * (cobre agendamentos manuais onde customer_id pode ser nulo ou o cliente
+ * não foi carregado por estar além do limite do Starter).
+ */
+async function getCustomerPortalText(appt: AppointmentRow): Promise<string | null> {
+  // 1. Tenta no estado local
+  const localCustomer =
     state.customers.find((item) => item.id === appt.customer_id) ||
     state.customers.find(
-      (item) => normalizePhone(item.phone) === normalizePhone(appt.client_phone) && normalizeName(item.name) === normalizeName(appt.client_name)
+      (item) =>
+        normalizePhone(item.phone) === normalizePhone(appt.client_phone) &&
+        normalizeName(item.name) === normalizeName(appt.client_name)
     );
-  if (!customer?.portal_token) return null;
-  return `Acompanhe seus horários, aprove alterações e reagende quando precisar: ${getCustomerPortalUrl(customer.portal_token)}`;
+
+  if (localCustomer?.portal_token) {
+    return `Acompanhe seus horários, aprove alterações e reagende quando precisar: ${getCustomerPortalUrl(localCustomer.portal_token)}`;
+  }
+
+  // 2. Fallback: consulta o Supabase (cobre limite do Starter e agendamentos manuais)
+  if (!state.business?.id) return null;
+  try {
+    const token = await appointmentService.fetchPortalTokenByPhone(
+      state.business.id,
+      appt.client_phone
+    );
+    if (!token) return null;
+    return `Acompanhe seus horários, aprove alterações e reagende quando precisar: ${getCustomerPortalUrl(token)}`;
+  } catch {
+    return null;
+  }
 }
 
 async function notifyAppointmentConfirmed(appt: AppointmentRow): Promise<string> {
@@ -258,7 +282,7 @@ async function notifyAppointmentConfirmed(appt: AppointmentRow): Promise<string>
   const svc = findService(appt.service_id);
   const prof = findProfessional(appt.professional_id);
   const canAutomate = canUseAutomaticCustomerWhatsApp(state.business);
-  const portalText = getCustomerPortalText(appt);
+  const portalText = await getCustomerPortalText(appt);
   if (canAutomate) {
     const template = buildAppointmentConfirmationTemplateFromRow(
       appt,
@@ -299,7 +323,7 @@ async function notifyAppointmentRescheduled(appt: AppointmentRow): Promise<strin
   const businessName = state.business?.name || "Nosso estabelecimento";
   const svc = findService(appt.service_id);
   const prof = findProfessional(appt.professional_id);
-  const portalText = getCustomerPortalText(appt);
+  const portalText = await getCustomerPortalText(appt);
   const msg = [
     buildAppointmentRescheduledFromRow(
       appt,

@@ -120,3 +120,31 @@ export async function deleteAppointmentSeriesRpc(seriesId: string) {
 export function mapAppointmentRows(data: unknown): AppointmentRow[] {
   return (data ?? []) as AppointmentRow[];
 }
+
+/**
+ * Busca o portal_token de um cliente pelo telefone e business_id.
+ * Útil quando o agendamento foi criado manualmente (sem customer_id)
+ * e o cliente não está carregado em state.customers.
+ */
+export async function fetchPortalTokenByPhone(
+  businessId: string,
+  phone: string
+): Promise<string | null> {
+  const digits = normalizePhone(phone);
+  if (!digits) return null;
+
+  const { data, error } = await getSupabase()
+    .from("customers")
+    .select("portal_token, phone")
+    .eq("business_id", businessId)
+    .not("portal_token", "is", null)
+    .limit(50);
+
+  if (error) return null;
+
+  const match = (data ?? []).find(
+    (row: { portal_token: string | null; phone: string }) =>
+      row.portal_token && normalizePhone(row.phone) === digits
+  );
+  return (match as { portal_token: string } | undefined)?.portal_token ?? null;
+}
