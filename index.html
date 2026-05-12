@@ -977,9 +977,9 @@
     <div id="publicClientPortal" class="page page-nopad hidden">
       <div class="pub-hero pub-hero-portal">
         <div class="biz-logo" id="clientPortalHeroEmoji">👋</div>
-        <div class="portal-kicker" id="clientPortalHeroKicker">Área do cliente</div>
         <h1 id="clientPortalHeroName">AgendaFácil</h1>
-        <p id="clientPortalHeroText">Acompanhe seus horários e reagende quando precisar.</p>
+        <p class="portal-welcome" id="clientPortalHeroWelcome">Seja bem-vindo</p>
+        <div class="portal-kicker portal-kicker-soft" id="clientPortalHeroKicker">(área do cliente)</div>
         <div class="meta">
           <span id="clientPortalAddressMeta">📍 Seu endereço</span>
           <span id="clientPortalWhatsappMeta">💬 WhatsApp</span>
@@ -1002,13 +1002,16 @@
         </div>
 
         <div class="card card-sm">
-          <div class="section-title" style="margin-bottom:10px;">Sua agenda</div>
-          <div class="filter-pills mb-3" id="clientPortalStatusFilters">
-            <button class="pill active" type="button" onclick="selectCustomerPortalStatusFilter('todos')">Todos</button>
-            <button class="pill" type="button" onclick="selectCustomerPortalStatusFilter('confirmado')">Confirmados</button>
-            <button class="pill" type="button" onclick="selectCustomerPortalStatusFilter('pendente')">Pendentes</button>
-            <button class="pill" type="button" onclick="selectCustomerPortalStatusFilter('concluido')">Atendidos</button>
-            <button class="pill" type="button" onclick="selectCustomerPortalStatusFilter('cancelado')">Cancelados</button>
+          <div class="dashboard-title-row" style="margin-bottom:10px;">
+            <div class="section-title" style="margin-bottom:0;">Sua agenda</div>
+            <button class="dashboard-clear-filter hidden" id="clientPortalClearStatus" type="button" onclick="clearCustomerPortalDateFilter()" aria-label="Limpar filtros da agenda">✕</button>
+          </div>
+          <div class="portal-filter-pills mb-3" id="clientPortalStatusFilters">
+            <button class="portal-filter-pill active" type="button" onclick="selectCustomerPortalStatusFilter('todos')">Todos</button>
+            <button class="portal-filter-pill" type="button" onclick="selectCustomerPortalStatusFilter('confirmado')">Confirmados</button>
+            <button class="portal-filter-pill" type="button" onclick="selectCustomerPortalStatusFilter('pendente')">Pendentes</button>
+            <button class="portal-filter-pill" type="button" onclick="selectCustomerPortalStatusFilter('concluido')">Atendidos</button>
+            <button class="portal-filter-pill" type="button" onclick="selectCustomerPortalStatusFilter('cancelado')">Cancelados</button>
           </div>
           <div id="clientPortalAppointmentList"></div>
         </div>

@@ -235,9 +235,10 @@ export function renderCustomerPortal(): void {
     if (el) el.textContent = text;
   };
 
-  setText("clientPortalHeroKicker", `Área do cliente de ${portal.customer.name}`);
+  const firstName = portal.customer.name.split(/\s+/)[0] || portal.customer.name;
   setText("clientPortalHeroName", portal.business.name);
-  setText("clientPortalHeroText", portal.business.description || "Acompanhe seus horários, veja o status dos agendamentos e aprove novos horários quando precisar.");
+  setText("clientPortalHeroWelcome", `Seja bem-vindo, ${firstName}`);
+  setText("clientPortalHeroKicker", "(área do cliente)");
   setText("clientPortalAddressMeta", `📍 ${portal.business.address || "Endereço não informado"}`);
   setText("clientPortalWhatsappMeta", `💬 ${portal.business.whatsapp || "WhatsApp"}`);
   setText("clientPortalHoursMeta", `🕐 ${formatHoursSummary(portal.hours)}`);
@@ -296,9 +297,10 @@ export function renderCustomerPortalAppointments(): void {
   const container = document.getElementById("clientPortalAppointmentList");
   const dateLabel = document.getElementById("clientPortalDateLabel");
   const clearBtn = document.getElementById("clientPortalClearDate");
+  const clearStatusBtn = document.getElementById("clientPortalClearStatus");
   if (!portal || !container || !dateLabel || !clearBtn) return;
 
-  const filters = document.querySelectorAll("#clientPortalStatusFilters .pill");
+  const filters = document.querySelectorAll("#clientPortalStatusFilters .portal-filter-pill");
   filters.forEach((filter) => {
     const isActive = filter.getAttribute("onclick") === `selectCustomerPortalStatusFilter('${state.customerPortalStatusFilter}')`;
     filter.classList.toggle("active", isActive);
@@ -310,6 +312,7 @@ export function renderCustomerPortalAppointments(): void {
     .filter((item) => (state.customerPortalStatusFilter !== "todos" ? item.status === state.customerPortalStatusFilter : true));
 
   clearBtn.classList.toggle("hidden", !state.customerPortalSelectedDate && state.customerPortalStatusFilter === "todos");
+  clearStatusBtn?.classList.toggle("hidden", !state.customerPortalSelectedDate && state.customerPortalStatusFilter === "todos");
   dateLabel.textContent = state.customerPortalSelectedDate
     ? `Filtro aplicado: ${formatLongDate(state.customerPortalSelectedDate)}`
     : state.customerPortalStatusFilter !== "todos"

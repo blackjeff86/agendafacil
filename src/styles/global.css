@@ -236,6 +236,15 @@
   .pub-hero p{font-size:13px;opacity:.88;max-width:320px;margin:0 auto;line-height:1.6;}
   .pub-hero .meta{display:flex;gap:10px;justify-content:center;margin-top:16px;font-size:12px;opacity:.96;flex-wrap:wrap;}
   .pub-hero .meta span{display:flex;align-items:center;gap:5px;padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.12);backdrop-filter:blur(10px);}
+  .pub-hero-portal h1{margin-bottom:8px;}
+  .portal-welcome{font-size:15px!important;font-weight:700;opacity:1!important;max-width:none!important;margin:0 auto 6px!important;}
+  .portal-kicker{display:inline-flex;align-items:center;justify-content:center;padding:8px 14px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:none;}
+  .portal-kicker-soft{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);color:#fff;margin-top:2px;}
+  .portal-filter-pills{display:flex;gap:10px;overflow:auto;padding-bottom:2px;scrollbar-width:none;}
+  .portal-filter-pills::-webkit-scrollbar{display:none;}
+  .portal-filter-pill{border:none;background:#f1ecff;color:#7c3aed;border:1px solid rgba(124,58,237,.12);border-radius:18px;padding:14px 18px;font-size:14px;font-weight:700;white-space:nowrap;min-width:132px;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 10px 24px rgba(15,23,42,.04);transition:all .2s ease;}
+  .portal-filter-pill.active{background:linear-gradient(135deg,#7c3aed 0%,#9333ea 64%,#38bdf8 100%);color:#fff;box-shadow:0 16px 30px rgba(124,58,237,.22);}
+  .portal-filter-pill:active{transform:translateY(1px);}
   /* ── STEPS INDICATOR ── */
   .steps{display:flex;align-items:center;justify-content:center;gap:6px;padding:16px;}
   .step-dot{width:8px;height:8px;border-radius:50%;background:var(--border);transition:all .3s;}
@@ -643,6 +652,7 @@
     .pub-hero{padding:26px 18px 34px;}
     .pub-hero .meta{gap:8px;}
     .pub-hero .meta span{font-size:11px;}
+    .portal-filter-pill{min-width:120px;padding:13px 16px;font-size:13px;}
     .pub-choice-card{padding:18px!important;}
     .modal-sheet{padding:22px 18px 18px;}
     .modal-sheet .font-bold.text-lg{font-size:20px;}
