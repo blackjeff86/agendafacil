@@ -245,6 +245,21 @@
   .portal-filter-pill{border:none;background:#f1ecff;color:#7c3aed;border:1px solid rgba(124,58,237,.12);border-radius:18px;padding:14px 18px;font-size:14px;font-weight:700;white-space:nowrap;min-width:132px;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 10px 24px rgba(15,23,42,.04);transition:all .2s ease;}
   .portal-filter-pill.active{background:linear-gradient(135deg,#7c3aed 0%,#9333ea 64%,#38bdf8 100%);color:#fff;box-shadow:0 16px 30px rgba(124,58,237,.22);}
   .portal-filter-pill:active{transform:translateY(1px);}
+  .portal-appt-item{align-items:stretch;gap:12px;padding:16px 15px;border-radius:22px;}
+  .portal-appt-time{min-width:88px;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:12px 10px;border-radius:18px;background:linear-gradient(180deg,#f7f0ff 0%,#f4f7ff 100%);border:1px solid rgba(124,58,237,.10);box-shadow:inset 0 0 0 1px rgba(255,255,255,.68);}
+  .portal-appt-time-hour{font-size:18px;font-weight:800;line-height:1;color:#7c3aed;letter-spacing:-.03em;}
+  .portal-appt-time-date{margin-top:6px;font-size:12px;font-weight:700;line-height:1.2;color:#7c6ea3;text-align:center;}
+  .portal-appt-info{display:flex;flex-direction:column;gap:8px;min-width:0;}
+  .portal-appt-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+  .portal-appt-name{font-size:18px;font-weight:800;line-height:1.1;color:#0f172a;letter-spacing:-.02em;}
+  .portal-appt-detail{font-size:13px;color:#64748b;line-height:1.45;}
+  .portal-appt-professional{font-weight:600;color:#475569;}
+  .portal-appt-meta-row{display:flex;flex-wrap:wrap;gap:8px;}
+  .portal-appt-meta-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;background:#f8fafc;border:1px solid rgba(124,58,237,.10);font-size:12px;font-weight:600;color:#64748b;}
+  .portal-appt-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:2px;}
+  .portal-appt-actions.is-empty{display:none;}
+  .portal-appt-actions .btn{width:auto;min-width:0;padding:11px 14px;border-radius:14px;font-size:13px;}
+  .portal-appt-secondary{background:#fff;color:#6d28d9;border-color:rgba(124,58,237,.18);}
   /* ── STEPS INDICATOR ── */
   .steps{display:flex;align-items:center;justify-content:center;gap:6px;padding:16px;}
   .step-dot{width:8px;height:8px;border-radius:50%;background:var(--border);transition:all .3s;}
@@ -653,6 +668,14 @@
     .pub-hero .meta{gap:8px;}
     .pub-hero .meta span{font-size:11px;}
     .portal-filter-pill{min-width:120px;padding:13px 16px;font-size:13px;}
+    .portal-appt-item{flex-direction:column;gap:14px;padding:15px 14px;}
+    .portal-appt-time{min-width:0;width:100%;flex-direction:row;justify-content:space-between;align-items:center;padding:12px 14px;}
+    .portal-appt-time-hour{font-size:19px;}
+    .portal-appt-time-date{margin-top:0;text-align:right;}
+    .portal-appt-title-row{align-items:center;}
+    .portal-appt-name{font-size:17px;}
+    .portal-appt-actions{display:grid;grid-template-columns:1fr;gap:8px;}
+    .portal-appt-actions .btn{width:100%;justify-content:center;}
     .pub-choice-card{padding:18px!important;}
     .modal-sheet{padding:22px 18px 18px;}
     .modal-sheet .font-bold.text-lg{font-size:20px;}

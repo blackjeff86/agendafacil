@@ -330,18 +330,22 @@ export function renderCustomerPortalAppointments(): void {
           const canApprove = appointment.status === "pendente" && appointment.client_reapproval_required;
           return `
             <div class="appt-item portal-appt-item">
-              <div class="appt-time">
-                ${formatTime(appointment.appointment_time)}
-                <small>${formatDateShort(appointment.appointment_date)}</small>
+              <div class="portal-appt-time">
+                <span class="portal-appt-time-hour">${formatTime(appointment.appointment_time)}</span>
+                <span class="portal-appt-time-date">${formatDateShort(appointment.appointment_date)}</span>
               </div>
-              <div class="appt-info">
-                <div class="name">${service?.name || "Serviço"}</div>
-                <div class="detail">${professional ? `${professional.emoji || "👤"} ${professional.name}` : "Primeiro disponível"}</div>
-                <div class="detail">${formatLongDate(appointment.appointment_date)}</div>
-                <div class="portal-appt-actions">
+              <div class="portal-appt-info">
+                <div class="portal-appt-title-row">
+                  <div class="portal-appt-name">${service?.name || "Serviço"}</div>
                   <span class="badge ${status?.cls || "badge-brand"}">${status?.label || appointment.status}</span>
+                </div>
+                <div class="portal-appt-detail portal-appt-professional">${professional ? `${professional.emoji || "👤"} ${professional.name}` : "Primeiro disponível"}</div>
+                <div class="portal-appt-meta-row">
+                  <span class="portal-appt-meta-chip">📅 ${formatLongDate(appointment.appointment_date)}</span>
+                </div>
+                <div class="portal-appt-actions ${!canApprove && !canReschedule ? "is-empty" : ""}">
                   ${canApprove ? `<button class="btn btn-brand btn-sm" type="button" onclick="approveCustomerPortalAppointment('${appointment.id}')">Aprovar horário</button>` : ""}
-                  ${canReschedule ? `<button class="btn btn-link btn-sm" type="button" onclick="openCustomerPortalReschedule('${appointment.id}')">Reagendar</button>` : ""}
+                  ${canReschedule ? `<button class="btn btn-outline btn-sm portal-appt-secondary" type="button" onclick="openCustomerPortalReschedule('${appointment.id}')">Reagendar</button>` : ""}
                 </div>
               </div>
             </div>
