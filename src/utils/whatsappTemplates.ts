@@ -12,12 +12,12 @@ import type { AppointmentRow, Business } from "../types";
 import { formatCurrency, formatLongDate, formatTime } from "./formatters";
 import type { WhatsAppTemplatePayload } from "../services/whatsappOutbound";
 
-const EMOJI_WAVE = "\u{1F44B}";
-const EMOJI_CALENDAR = "\u{1F4C5}";
-const EMOJI_CLOCK = "\u{1F550}";
-const EMOJI_SCISSORS = "\u2702\uFE0F";
-const EMOJI_PERSON = "\u{1F464}";
-const EMOJI_MONEY = "\u{1F4B0}";
+const EMOJI_WAVE = "👋";
+const EMOJI_CALENDAR = "📅";
+const EMOJI_CLOCK = "🕐";
+const EMOJI_SCISSORS = "✂️";
+const EMOJI_PERSON = "👤";
+const EMOJI_MONEY = "💰";
 
 function getFirstName(name: string): string {
   return name.split(/\s+/)[0] || name;
