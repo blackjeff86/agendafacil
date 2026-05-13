@@ -355,7 +355,7 @@ export async function updateAppointmentStatus(status: AppointmentStatus): Promis
     const { error } = await appointmentService.updateAppointment(state.selectedAppointment.id, {
       status,
       client_reapproval_required: status === "pendente" ? snapshot.client_reapproval_required ?? false : false,
-      ...(status === "cancelado" ? { cancelled_by: "salon" } : { cancelled_by: null }),
+      ...(status === "cancelado" ? { cancelled_by: "salon" } : {}),
     });
     if (error) throw error;
     state.selectedAppointment = { ...snapshot, status };
