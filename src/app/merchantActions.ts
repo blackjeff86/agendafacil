@@ -937,7 +937,15 @@ export async function saveAppointment(): Promise<void> {
       const { error } = await appointmentService.updateAppointment(state.editingAppointmentId!, payload);
       if (error) throw error;
     } else {
-      const { data, error } = await appointmentService.insertAppointment(payload);
+      const customer = await appointmentService.ensureCustomerRecord({
+        businessId: payload.business_id,
+        name: payload.client_name,
+        phone: payload.client_phone,
+      });
+      const { data, error } = await appointmentService.insertAppointment({
+        ...payload,
+        customer_id: customer?.id ?? null,
+      });
       if (error) throw error;
       createdAppointment = Array.isArray(data) ? data[0] : data;
     }
