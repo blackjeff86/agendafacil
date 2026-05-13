@@ -371,6 +371,7 @@
   .customer-chip-row{display:flex;gap:8px;flex-wrap:wrap;}
   .customer-chip-btn{font:inherit;cursor:pointer;text-decoration:none;}
   .chip-vip{background:#fff7ed!important;border-color:#fdba74!important;color:#b45309!important;}
+  .chip-cancel-by{display:inline-flex;background:#fef2f2;color:#b91c1c;border-radius:20px;font-weight:600;}
   .support-footer-card{background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%);border:1px solid rgba(124,58,237,.10);border-radius:22px;padding:18px;box-shadow:0 16px 32px rgba(30,27,75,.06);}
   .support-footer-kicker{display:inline-flex;padding:6px 10px;border-radius:999px;background:#ede9fe;color:#6d28d9;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
   .support-footer-title{font-size:18px;font-weight:800;color:#0f172a;line-height:1.2;margin-bottom:8px;letter-spacing:-.02em;}

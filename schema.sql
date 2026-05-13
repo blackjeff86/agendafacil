@@ -198,6 +198,7 @@ create table if not exists public.appointments (
   status           text not null default 'pendente'
     check (status in ('pendente','confirmado','concluido','cancelado')),
   client_reapproval_required boolean default false,
+  cancelled_by     text check (cancelled_by in ('client', 'salon')),
   created_at       timestamptz default now()
 );
 
@@ -209,6 +210,10 @@ alter table public.appointments add column if not exists client_reapproval_requi
 
 alter table public.appointments add column if not exists reminder_sent_at timestamptz;
 comment on column public.appointments.reminder_sent_at is 'Preenchido pelo job diário ao enviar lembrete D-1 ao cliente (WhatsApp).';
+
+alter table public.appointments add column if not exists cancelled_by text
+  check (cancelled_by in ('client', 'salon'));
+comment on column public.appointments.cancelled_by is 'Quem cancelou: client = pelo portal do cliente, salon = pelo gestor do salão.';
 
 create index if not exists idx_appointments_reminder_day
   on public.appointments (appointment_date)
@@ -868,7 +873,8 @@ begin
   end if;
 
   update public.appointments
-     set status = 'cancelado'
+     set status = 'cancelado',
+         cancelled_by = 'client'
    where id = v_appointment.id
    returning * into v_appointment;
 

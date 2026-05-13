@@ -330,6 +330,10 @@ export function renderCustomerPortalAppointments(): void {
           const canCancel = appointment.status !== "cancelado" && appointment.status !== "concluido";
           const canApprove = appointment.status === "pendente" && appointment.client_reapproval_required;
           const cancelConfirm = `if(confirm('Tem certeza que deseja cancelar este agendamento?')) cancelCustomerPortalAppointment('${appointment.id}')`;
+          const cancelledByLabel =
+            appointment.status === "cancelado" && appointment.cancelled_by
+              ? `<span class="chip chip-cancel-by" style="margin:4px 0 0;padding:2px 8px;font-size:10px;">${appointment.cancelled_by === "client" ? "Cancelado por você" : "Cancelado pelo salão"}</span>`
+              : "";
           return `
             <div class="appt-item portal-appt-item">
               <div class="portal-appt-time">
@@ -344,6 +348,7 @@ export function renderCustomerPortalAppointments(): void {
                 <div class="portal-appt-detail portal-appt-professional">${professional ? `${professional.emoji || "👤"} ${professional.name}` : "Primeiro disponível"}</div>
                 <div class="portal-appt-meta-row">
                   <span class="portal-appt-meta-chip">📅 ${formatLongDate(appointment.appointment_date)}</span>
+                  ${cancelledByLabel}
                 </div>
                 <div class="portal-appt-actions ${!canApprove && !canReschedule && !canCancel ? "is-empty" : ""}">
                   ${canApprove ? `<button class="btn btn-brand btn-sm" type="button" onclick="approveCustomerPortalAppointment('${appointment.id}')">Aprovar horário</button>` : ""}

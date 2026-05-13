@@ -297,6 +297,10 @@ export function renderApptList(filter: string): void {
           const recurrenceBadge = appointment.series_id
             ? `<span class="chip" style="margin:0 0 0 8px;padding:2px 8px;font-size:10px;">Recorrente</span>`
             : "";
+          const cancelledByBadge =
+            appointment.status === "cancelado" && appointment.cancelled_by
+              ? `<span class="chip chip-cancel-by" style="margin:2px 0 0;padding:2px 8px;font-size:10px;">${appointment.cancelled_by === "client" ? "Pelo cliente" : "Pelo salão"}</span>`
+              : "";
           return `
             <div class="appt-item" onclick="openApptDetail('${appointment.id}')">
               <div>
@@ -306,6 +310,7 @@ export function renderApptList(filter: string): void {
               <div class="appt-info">
                 <div class="name ${appointment.status === "concluido" ? "is-done" : ""}">${appointment.client_name}${recurrenceBadge}</div>
                 <div class="detail">${service?.name || "Servico"} · ${professional?.emoji || "👤"} ${professional?.name || "Sem preferencia"}</div>
+                ${cancelledByBadge}
               </div>
               <span class="badge ${status.cls}">${status.label}</span>
             </div>`;
@@ -334,6 +339,10 @@ export function renderApptHistoryList(filter: string): void {
           const service = findService(appointment.service_id);
           const professional = findProfessional(appointment.professional_id);
           const status = STATUS_LABELS[appointment.status] || STATUS_LABELS.pendente;
+          const cancelledByBadge =
+            appointment.status === "cancelado" && appointment.cancelled_by
+              ? `<span class="chip chip-cancel-by" style="margin:2px 0 0;padding:2px 8px;font-size:10px;">${appointment.cancelled_by === "client" ? "Pelo cliente" : "Pelo salão"}</span>`
+              : "";
           return `
             <div class="appt-item" onclick="openApptDetail('${appointment.id}')">
               <div>
@@ -343,6 +352,7 @@ export function renderApptHistoryList(filter: string): void {
               <div class="appt-info">
                 <div class="name ${appointment.status === "concluido" ? "is-done" : ""}">${appointment.client_name}</div>
                 <div class="detail">${service?.name || "Servico"} · ${professional?.emoji || "👤"} ${professional?.name || "Sem preferencia"}</div>
+                ${cancelledByBadge}
               </div>
               <span class="badge ${status.cls}">${status.label}</span>
             </div>`;
@@ -640,7 +650,9 @@ export function renderHorarios(): void {
 }
 
 export function populateModalOptions(): void {
-  const serviceOptions = state.services.map((service) => `<option value="${service.id}">${service.name}</option>`).join("");
+  const serviceOptions = [`<option value="">Selecione um serviço</option>`]
+    .concat(state.services.map((service) => `<option value="${service.id}">${service.name}</option>`))
+    .join("");
   const professionalOptions = [`<option value="">Sem preferencia</option>`]
     .concat(state.professionals.map((professional) => `<option value="${professional.id}">${professional.name}</option>`))
     .join("");

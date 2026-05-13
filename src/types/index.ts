@@ -102,6 +102,8 @@ export interface AppointmentRow {
   series_id?: string | null;
   /** Lembrete automático (D-1) já enviado ao cliente. */
   reminder_sent_at?: string | null;
+  /** Quem cancelou: 'client' = pelo portal do cliente, 'salon' = pelo gestor. */
+  cancelled_by?: "client" | "salon" | null;
 }
 
 export interface BusinessHourRow {

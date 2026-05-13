@@ -1256,7 +1256,7 @@
       <div class="input-group"><label for="newApptService">Serviço</label><select id="newApptService" onchange="syncAppointmentAvailability()"></select></div>
       <div class="input-group"><label for="newApptProfessional">Profissional</label><select id="newApptProfessional" onchange="syncAppointmentAvailability()"></select></div>
       <div class="appt-modal-grid">
-        <div class="input-group"><label for="newApptDate">Data</label><input type="date" id="newApptDate" onchange="syncAppointmentAvailability()" /></div>
+        <div class="input-group"><label for="newApptDate">Data</label><input type="date" id="newApptDate" onchange="syncAppointmentAvailability()" oninput="syncAppointmentAvailability()" /></div>
         <div class="input-group"><label for="newApptTime">Horário</label><input type="time" id="newApptTime" onchange="syncAppointmentTimeInput()" /></div>
       </div>
       <div class="appt-availability-box" id="apptAvailabilityBox">
