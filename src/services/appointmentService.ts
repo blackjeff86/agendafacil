@@ -2,7 +2,7 @@ import { getSupabase } from "../lib/supabase";
 import type { AppointmentRow, CustomerRow } from "../types";
 
 export async function insertAppointment(payload: Record<string, unknown>) {
-  return getSupabase().from("appointments").insert(payload);
+  return getSupabase().from("appointments").insert(payload).select().single();
 }
 
 export async function updateAppointment(appointmentId: string, payload: Record<string, unknown>) {

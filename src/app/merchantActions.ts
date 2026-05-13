@@ -16,7 +16,7 @@ import { serializeBusinessHourDayName } from "../utils/businessHours";
 import { readFileAsDataUrl } from "../utils/files";
 import { slugify } from "../utils/strings";
 import { showLoading, showToast, openModal } from "../ui/dom";
-import { closeAppointmentModal, closeModal, hasAppointmentBeenRescheduled, notifyCustomerAboutReschedule } from "./appointmentActions";
+import { closeAppointmentModal, closeModal, hasAppointmentBeenRescheduled, notifyAppointmentConfirmed, notifyCustomerAboutReschedule } from "./appointmentActions";
 import { loadSupportBusinesses } from "./bootstrap";
 import { refreshAllBusinessData } from "./refresh";
 import { createSupportEvent } from "./supportEvents";
@@ -932,10 +932,15 @@ export async function saveAppointment(): Promise<void> {
         payload.client_reapproval_required = true;
       }
     }
-    const { error } = isEditing
-      ? await appointmentService.updateAppointment(state.editingAppointmentId!, payload)
-      : await appointmentService.insertAppointment(payload);
-    if (error) throw error;
+    let createdAppointment = null;
+    if (isEditing) {
+      const { error } = await appointmentService.updateAppointment(state.editingAppointmentId!, payload);
+      if (error) throw error;
+    } else {
+      const { data, error } = await appointmentService.insertAppointment(payload);
+      if (error) throw error;
+      createdAppointment = Array.isArray(data) ? data[0] : data;
+    }
     closeAppointmentModal();
     let toastMessage = isEditing ? "Agendamento atualizado com sucesso." : "Agendamento criado com sucesso.";
     if (isEditing && previousAppointment) {
@@ -943,6 +948,8 @@ export async function saveAppointment(): Promise<void> {
       if (updatedAppointment.status !== "cancelado" && hasAppointmentBeenRescheduled(previousAppointment, updatedAppointment)) {
         toastMessage = await notifyCustomerAboutReschedule(updatedAppointment);
       }
+    } else if (!isEditing && createdAppointment) {
+      toastMessage = await notifyAppointmentConfirmed(createdAppointment);
     }
     showToast(toastMessage);
     await refreshAllBusinessData();

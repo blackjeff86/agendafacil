@@ -277,7 +277,7 @@ async function getCustomerPortalText(appt: AppointmentRow): Promise<string | nul
   }
 }
 
-async function notifyAppointmentConfirmed(appt: AppointmentRow): Promise<string> {
+export async function notifyAppointmentConfirmed(appt: AppointmentRow): Promise<string> {
   const businessName = state.business?.name || "Nosso estabelecimento";
   const svc = findService(appt.service_id);
   const prof = findProfessional(appt.professional_id);
