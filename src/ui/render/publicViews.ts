@@ -327,7 +327,9 @@ export function renderCustomerPortalAppointments(): void {
           const professional = portal.professionals.find((item) => item.id === appointment.professional_id) || findProfessional(appointment.professional_id);
           const status = STATUS_LABELS[appointment.status];
           const canReschedule = appointment.status !== "cancelado" && appointment.status !== "concluido";
+          const canCancel = appointment.status !== "cancelado" && appointment.status !== "concluido";
           const canApprove = appointment.status === "pendente" && appointment.client_reapproval_required;
+          const cancelConfirm = `if(confirm('Tem certeza que deseja cancelar este agendamento?')) cancelCustomerPortalAppointment('${appointment.id}')`;
           return `
             <div class="appt-item portal-appt-item">
               <div class="portal-appt-time">
@@ -343,9 +345,10 @@ export function renderCustomerPortalAppointments(): void {
                 <div class="portal-appt-meta-row">
                   <span class="portal-appt-meta-chip">📅 ${formatLongDate(appointment.appointment_date)}</span>
                 </div>
-                <div class="portal-appt-actions ${!canApprove && !canReschedule ? "is-empty" : ""}">
+                <div class="portal-appt-actions ${!canApprove && !canReschedule && !canCancel ? "is-empty" : ""}">
                   ${canApprove ? `<button class="btn btn-brand btn-sm" type="button" onclick="approveCustomerPortalAppointment('${appointment.id}')">Aprovar horário</button>` : ""}
                   ${canReschedule ? `<button class="btn btn-outline btn-sm portal-appt-secondary" type="button" onclick="openCustomerPortalReschedule('${appointment.id}')">Reagendar</button>` : ""}
+                  ${canCancel ? `<button class="btn btn-ghost btn-sm portal-appt-cancel" type="button" onclick="${cancelConfirm}">Cancelar</button>` : ""}
                 </div>
               </div>
             </div>

@@ -653,6 +653,27 @@ export async function approveCustomerPortalAppointment(appointmentId: string): P
   }
 }
 
+export async function cancelCustomerPortalAppointment(appointmentId: string): Promise<void> {
+  const portal = state.publicCustomerPortal;
+  if (!portal?.customer.portal_token) return;
+  showLoading(true);
+  try {
+    const updated = await customerPortalService.cancelCustomerPortalAppointment({
+      portalToken: portal.customer.portal_token,
+      appointmentId,
+    });
+    portal.appointments = portal.appointments.map((item) => (item.id === updated.id ? updated : item));
+    state.publicCustomerPortal = { ...portal };
+    renderCustomerPortal();
+    showToast("Agendamento cancelado com sucesso.");
+  } catch (error) {
+    console.error(error);
+    showToast(getFriendlyAppointmentError(error));
+  } finally {
+    showLoading(false);
+  }
+}
+
 export function closeCustomerPortalRescheduleModal(): void {
   state.customerPortalSelectedAppointmentId = null;
   customerPortalRescheduleDate = null;

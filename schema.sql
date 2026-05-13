@@ -817,6 +817,69 @@ $$;
 
 grant execute on function public.approve_customer_portal_appointment(text, uuid) to anon, authenticated;
 
+create or replace function public.cancel_customer_portal_appointment(
+  p_portal_token text,
+  p_appointment_id uuid
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_customer public.customers%rowtype;
+  v_business public.businesses%rowtype;
+  v_appointment public.appointments%rowtype;
+begin
+  select *
+    into v_customer
+  from public.customers
+  where portal_token = p_portal_token;
+
+  if v_customer.id is null then
+    raise exception 'Área do cliente não encontrada.';
+  end if;
+
+  select *
+    into v_business
+  from public.businesses
+  where id = v_customer.business_id
+    and active = true;
+
+  if v_business.id is null then
+    raise exception 'Negócio indisponível.';
+  end if;
+
+  select *
+    into v_appointment
+  from public.appointments
+  where id = p_appointment_id
+    and business_id = v_customer.business_id
+    and regexp_replace(lower(coalesce(client_name, '')), '[^a-z0-9]', '', 'g')
+        = regexp_replace(lower(coalesce(v_customer.name, '')), '[^a-z0-9]', '', 'g')
+    and regexp_replace(coalesce(client_phone, ''), '\D', '', 'g')
+        = regexp_replace(coalesce(v_customer.phone, ''), '\D', '', 'g');
+
+  if v_appointment.id is null then
+    raise exception 'Agendamento não encontrado.';
+  end if;
+
+  if v_appointment.status in ('cancelado', 'concluido') then
+    raise exception 'Esse agendamento não pode mais ser cancelado.';
+  end if;
+
+  update public.appointments
+     set status = 'cancelado'
+   where id = v_appointment.id
+   returning * into v_appointment;
+
+  return jsonb_build_object(
+    'appointment', to_jsonb(v_appointment)
+  );
+end;
+$$;
+
+grant execute on function public.cancel_customer_portal_appointment(text, uuid) to anon, authenticated;
+
 create or replace function public.delete_appointment_series(
   p_series_id uuid
 ) returns void

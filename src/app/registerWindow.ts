@@ -74,6 +74,7 @@ export function registerWindowActions(): void {
     selectCustomerPortalRescheduleTime: pub.selectCustomerPortalRescheduleTime,
     confirmCustomerPortalReschedule: pub.confirmCustomerPortalReschedule,
     approveCustomerPortalAppointment: pub.approveCustomerPortalAppointment,
+    cancelCustomerPortalAppointment: pub.cancelCustomerPortalAppointment,
     closeCustomerPortalRescheduleModal: pub.closeCustomerPortalRescheduleModal,
     selectSecondDate: pub.selectSecondDate,
     selectSecondTime: pub.selectSecondTime,
