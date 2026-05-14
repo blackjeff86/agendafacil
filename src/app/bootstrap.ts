@@ -7,6 +7,7 @@ import { applyBodyMode, finishInitialBoot, showLoading, showScreen, showToast } 
 import { getErrorMessage } from "../utils/errors";
 import { slugify } from "../utils/strings";
 import { createBusinessAndSeed } from "./businessLifecycle";
+import { getInitialAdminPage, startPendingOnboarding } from "./onboarding";
 import { refreshAllBusinessData } from "./refresh";
 import { syncEntryViewFromUrl } from "./authUi";
 import { loadCustomerPortalData, loadPublicData } from "./publicData";
@@ -116,7 +117,8 @@ export async function loadAdminExperience(): Promise<void> {
   }
   await loadSupportBusinesses();
   document.getElementById("supportNavItem")?.classList.toggle("hidden", !state.isPlatformAdmin);
-  navTo(state.isPlatformAdmin ? "pageSupport" : "pageDashboard");
+  navTo(state.isPlatformAdmin ? "pageSupport" : getInitialAdminPage());
+  startPendingOnboarding();
 }
 
 export async function bootstrapApp(): Promise<void> {

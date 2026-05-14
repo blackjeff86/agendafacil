@@ -197,6 +197,11 @@ function readNullableValue(id: string): string | null {
   return value || null;
 }
 
+function readRequiredValue(id: string): string {
+  const el = document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+  return el?.value?.trim() || "";
+}
+
 function validateProfessionalAvailability(payload: {
   vacation_start: string | null;
   vacation_end: string | null;
@@ -310,14 +315,14 @@ export async function saveBusinessProfile(): Promise<void> {
   if (!state.business) return;
 
   const payload = {
-    name: (document.getElementById("businessName") as HTMLInputElement).value.trim(),
-    slug: slugify((document.getElementById("businessSlug") as HTMLInputElement).value.trim()),
-    category: (document.getElementById("businessCategory") as HTMLSelectElement).value,
-    description: (document.getElementById("businessDescription") as HTMLTextAreaElement).value.trim(),
-    whatsapp: (document.getElementById("businessWhatsapp") as HTMLInputElement).value.trim(),
-    instagram: (document.getElementById("businessInstagram") as HTMLInputElement).value.trim(),
-    address: (document.getElementById("businessAddress") as HTMLInputElement).value.trim(),
-    logo_emoji: (document.getElementById("businessLogoEmoji") as HTMLInputElement).value.trim() || "✂️",
+    name: readRequiredValue("businessName"),
+    slug: slugify(readRequiredValue("businessSlug")),
+    category: readRequiredValue("businessCategory"),
+    description: readRequiredValue("businessDescription"),
+    whatsapp: readRequiredValue("businessWhatsapp"),
+    instagram: readRequiredValue("businessInstagram"),
+    address: readRequiredValue("businessAddress"),
+    logo_emoji: state.business.logo_emoji || "✂️",
     logo_image_url: state.business.logo_image_url || "",
     cover_image_url: state.business.cover_image_url || "",
   };

@@ -673,21 +673,25 @@
         </div>
       </div>
       <div class="scroll-area p-4">
-        <div class="flex justify-between items-center gap-3 mb-3">
-          <div>
-            <div class="section-title" style="margin:0;">Serviços oferecidos</div>
-            <div class="text-sm text-sub">Organize o que seu negócio entrega e quem executa cada atendimento.</div>
+        <div id="servicesOnboardingSection">
+          <div class="flex justify-between items-center gap-3 mb-3">
+            <div>
+              <div class="section-title" style="margin:0;">Serviços oferecidos</div>
+              <div class="text-sm text-sub">Organize o que seu negócio entrega e quem executa cada atendimento.</div>
+            </div>
+            <button class="btn btn-sm btn-brand" style="width:auto" type="button" onclick="openServiceModal()">+ Serviço</button>
           </div>
-          <button class="btn btn-sm btn-brand" style="width:auto" type="button" onclick="openServiceModal()">+ Serviço</button>
+          <div id="servicosList"></div>
         </div>
-        <div id="servicosList"></div>
 
-        <div class="flex justify-between items-center gap-3 mb-3 mt-4">
-          <div class="section-title" style="margin:0;">Equipe disponível</div>
-          <button class="btn btn-sm btn-brand" id="btnAddProfessional" style="width:auto" type="button" onclick="openProfessionalModal()">+ Profissional</button>
+        <div id="professionalsOnboardingSection">
+          <div class="flex justify-between items-center gap-3 mb-3 mt-4">
+            <div class="section-title" style="margin:0;">Equipe disponível</div>
+            <button class="btn btn-sm btn-brand" id="btnAddProfessional" style="width:auto" type="button" onclick="openProfessionalModal()">+ Profissional</button>
+          </div>
+          <div id="profissionaisPlanHint" class="hidden"></div>
+          <div id="profissionaisList"></div>
         </div>
-        <div id="profissionaisPlanHint" class="hidden"></div>
-        <div id="profissionaisList"></div>
       </div>
     </div>
 
@@ -744,7 +748,7 @@
       </div>
       <div class="scroll-area p-4">
         <div class="biz-cover" id="bizCoverPreview"><div class="biz-avatar" id="bizAvatarPreview">✂️</div></div>
-        <details class="biz-accordion" open>
+        <details class="biz-accordion" id="businessInfoAccordion" open>
           <summary class="biz-accordion-summary">
             <div>
               <div class="biz-accordion-kicker">Seção</div>
@@ -753,7 +757,7 @@
             <span class="biz-accordion-icon" aria-hidden="true">⌄</span>
           </summary>
           <div class="biz-accordion-body">
-            <div class="card">
+            <div class="card" id="businessInfoCard">
               <div class="input-group"><label for="businessName">Nome do Negócio</label><input type="text" id="businessName" /></div>
               <div class="input-group"><label for="businessSlug">Slug público</label><input type="text" id="businessSlug" /></div>
               <div class="input-group"><label for="businessCategory">Categoria</label>
@@ -769,8 +773,6 @@
               <div class="input-group"><label for="businessInstagram">Instagram</label><input type="text" id="businessInstagram" /></div>
               <div class="input-group"><label for="businessAddress">Endereço</label><input type="text" id="businessAddress" /></div>
               <div class="input-group"><label for="businessLogoFile">Logo do salão</label><input type="file" id="businessLogoFile" accept="image/*" onchange="handleBusinessLogoUpload(event)" /></div>
-              <div class="input-group"><label for="businessCoverFile">Foto de capa</label><input type="file" id="businessCoverFile" accept="image/*" onchange="handleBusinessCoverUpload(event)" /></div>
-              <div class="input-group"><label for="businessLogoEmoji">Emoji/Logo</label><input type="text" id="businessLogoEmoji" maxlength="4" /></div>
             </div>
           </div>
         </details>
@@ -787,7 +789,7 @@
             <div id="profissionaisNegocioList"></div>
           </div>
         </details>
-        <details class="biz-accordion">
+        <details class="biz-accordion" id="businessHoursAccordion">
           <summary class="biz-accordion-summary">
             <div>
               <div class="biz-accordion-kicker">Seção</div>
@@ -796,7 +798,7 @@
             <span class="biz-accordion-icon" aria-hidden="true">⌄</span>
           </summary>
           <div class="biz-accordion-body">
-            <div class="card">
+            <div class="card" id="businessHoursCard">
               <div id="horariosList"></div>
             </div>
           </div>
@@ -1244,6 +1246,19 @@
 
       <button class="btn btn-brand mt-2" type="button" onclick="confirmHourFreeze()">Confirmar pausa</button>
       <button class="btn btn-ghost mt-2" type="button" onclick="closeHourFreezeModal()">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay modal-overlay-center" id="modalOnboardingGuide">
+    <div class="modal-sheet modal-sheet-compact onboarding-modal-sheet">
+      <div class="onboarding-progress" id="onboardingModalProgress">Passo 1 de 4</div>
+      <div class="font-bold text-lg mb-2" id="onboardingModalTitle">Comece pelos dados do salão</div>
+      <div class="text-sm text-sub mb-3" id="onboardingModalDescription">Preencha as informações principais para deixar sua página mais completa e profissional.</div>
+      <ul class="onboarding-list" id="onboardingModalList"></ul>
+      <div class="onboarding-actions">
+        <button class="btn btn-brand" id="onboardingPrimaryButton" type="button" onclick="nextOnboardingStep()">Próximo</button>
+        <button class="btn btn-ghost" type="button" onclick="closeOnboarding()">Fechar guia</button>
+      </div>
     </div>
   </div>
 

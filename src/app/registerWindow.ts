@@ -4,6 +4,7 @@ import * as auth from "./authActions";
 import { switchAuthMode, syncSignupPlanChoice } from "./authUi";
 import * as merchant from "./merchantActions";
 import { clearDashboardDateFilter, filterAppt, filterApptHistory, navTo, selectDashboardDate } from "./navigation";
+import { closeOnboarding, nextOnboardingStep } from "./onboarding";
 import { confirmPlanUpgradeToPro, openPlanUpgradeModal } from "./planActions";
 import * as pub from "./publicFlow";
 import { toggleRecurrenceFields } from "./publicData";
@@ -120,6 +121,8 @@ export function registerWindowActions(): void {
     closeHourFreezeModal: merchant.closeHourFreezeModal,
     doLogin: auth.doLogin,
     doSignup: auth.doSignup,
+    nextOnboardingStep,
+    closeOnboarding,
     openPlanUpgradeModal,
     confirmPlanUpgradeToPro,
     saveBusinessProfile: merchant.saveBusinessProfile,
