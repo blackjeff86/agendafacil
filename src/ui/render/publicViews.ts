@@ -1,6 +1,6 @@
 import { bookingState, state } from "../../state/store";
 import { emptyStateHtml } from "../components/emptyState";
-import { formatCurrency, formatDateShort, formatHoursSummary, formatLongDate, formatTime } from "../../utils/formatters";
+import { formatCurrency, formatDateShort, formatHoursSummary, formatLongDate, formatTime, getLocalIsoDate } from "../../utils/formatters";
 import { STATUS_LABELS } from "../../state/store";
 import { findProfessional, findService } from "../../state/selectors";
 
@@ -165,7 +165,7 @@ export function renderDateScroll(): void {
   for (let index = 0; index < 14; index += 1) {
     const date = new Date(base);
     date.setDate(base.getDate() + index);
-    const iso = date.toISOString().slice(0, 10);
+    const iso = getLocalIsoDate(date);
     list.push(`
       <button class="date-btn ${index === 0 ? "today" : ""}" type="button" onclick="selectDate('${iso}')">
         <span style="font-size:10px;">${labels[date.getDay()]}</span>

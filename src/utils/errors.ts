@@ -10,6 +10,7 @@ export function getFriendlyAppointmentError(error: unknown): string {
   if (
     message.includes("Horario indisponivel") ||
     message.includes("Nao existe profissional disponivel") ||
+    message.includes("Profissional indispon") ||
     message.includes("Horario fora do expediente") ||
     message.includes("fechado nesta data")
   ) {

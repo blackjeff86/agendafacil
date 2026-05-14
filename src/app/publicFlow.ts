@@ -4,6 +4,7 @@ import { generateTimeSlotsForDate } from "../utils/dates";
 import { getErrorMessage, getFriendlyAppointmentError } from "../utils/errors";
 import { formatLongDate, formatRecurrenceLabel, formatTime } from "../utils/formatters";
 import { onlyDigits } from "../utils/phone";
+import { isProfessionalSlotBlocked } from "../utils/professionalAvailability";
 import { bookingState, pubStepHistory, setBookingState, state } from "../state/store";
 import type { LastBookingPayload } from "../types";
 import { emptyStateHtml } from "../ui/components/emptyState";
@@ -22,6 +23,42 @@ import {
 
 let customerPortalRescheduleDate: string | null = null;
 let customerPortalRescheduleTime: string | null = null;
+
+function isPublicProfessionalSlotBlocked(params: {
+  serviceId: string;
+  professionalId: string | null;
+  date: string;
+  time: string;
+}): boolean {
+  if (!params.professionalId) return false;
+  const service = state.publicData.services.find((item) => item.id === params.serviceId);
+  const professional = state.publicData.professionals.find((item) => item.id === params.professionalId);
+  return isProfessionalSlotBlocked({
+    professional,
+    date: params.date,
+    time: params.time,
+    durationMinutes: service?.duration || 0,
+  });
+}
+
+function isPortalProfessionalSlotBlocked(params: {
+  serviceId: string;
+  professionalId: string | null;
+  date: string;
+  time: string;
+}): boolean {
+  if (!params.professionalId) return false;
+  const portal = state.publicCustomerPortal;
+  if (!portal) return false;
+  const service = portal.services.find((item) => item.id === params.serviceId);
+  const professional = portal.professionals.find((item) => item.id === params.professionalId);
+  return isProfessionalSlotBlocked({
+    professional,
+    date: params.date,
+    time: params.time,
+    durationMinutes: service?.duration || 0,
+  });
+}
 
 export function pubGoRaw(step: number): void {
   document.querySelectorAll("#publicShell .page").forEach((page) => {
@@ -158,6 +195,12 @@ export async function renderTimeGrid(): Promise<void> {
   const availability = await Promise.all(
     slots.map(async (slot) => ({
       slot,
+      locallyBlocked: isPublicProfessionalSlotBlocked({
+        serviceId: bookingState.serviceId!,
+        professionalId,
+        date: bookingState.date!,
+        time: slot,
+      }),
       available: state.publicData.business
         ? await appointmentService.isSlotAvailable({
             businessId: state.publicData.business.id,
@@ -177,8 +220,8 @@ export async function renderTimeGrid(): Promise<void> {
 
   container.innerHTML = availability
     .map(
-      ({ slot, available }) => `
-        <button class="time-btn" type="button" ${available ? "" : "disabled"} onclick="selectTime('${slot}')">${slot}</button>
+      ({ slot, available, locallyBlocked }) => `
+        <button class="time-btn" type="button" ${available && !locallyBlocked ? "" : "disabled"} onclick="selectTime('${slot}')">${slot}</button>
       `
     )
     .join("");
@@ -218,6 +261,12 @@ export async function renderSecondTimeGrid(): Promise<void> {
   const availability = await Promise.all(
     slots.map(async (slot) => ({
       slot,
+      locallyBlocked: isPublicProfessionalSlotBlocked({
+        serviceId: bookingState.serviceId!,
+        professionalId,
+        date: bookingState.secondDate!,
+        time: slot,
+      }),
       available:
         bookingState.date !== bookingState.secondDate || bookingState.time !== slot
           ? state.publicData.business
@@ -240,8 +289,8 @@ export async function renderSecondTimeGrid(): Promise<void> {
 
   container.innerHTML = availability
     .map(
-      ({ slot, available }) => `
-        <button class="time-btn time-btn-sm" type="button" ${available ? "" : "disabled"} onclick="selectSecondTime('${slot}')">${slot}</button>
+      ({ slot, available, locallyBlocked }) => `
+        <button class="time-btn time-btn-sm" type="button" ${available && !locallyBlocked ? "" : "disabled"} onclick="selectSecondTime('${slot}')">${slot}</button>
       `
     )
     .join("");
@@ -535,6 +584,12 @@ async function renderCustomerPortalRescheduleTimeGrid(): Promise<void> {
   const availability = await Promise.all(
     slots.map(async (slot) => {
       const isSameSlot = appointment.appointment_date === customerPortalRescheduleDate && formatTime(appointment.appointment_time) === slot;
+      const locallyBlocked = isPortalProfessionalSlotBlocked({
+        serviceId: appointment.service_id,
+        professionalId: appointment.professional_id || null,
+        date: customerPortalRescheduleDate!,
+        time: slot,
+      });
       const available = isSameSlot
         ? false
         : await appointmentService.isSlotAvailable({
@@ -544,14 +599,14 @@ async function renderCustomerPortalRescheduleTimeGrid(): Promise<void> {
             date: customerPortalRescheduleDate!,
             time: slot,
           });
-      return { slot, available };
+      return { slot, available, locallyBlocked };
     })
   );
 
   container.innerHTML = availability
     .map(
-      ({ slot, available }) => `
-        <button class="time-btn ${customerPortalRescheduleTime === slot ? "selected" : ""}" type="button" ${available ? "" : "disabled"} onclick="selectCustomerPortalRescheduleTime('${slot}')">${slot}</button>
+      ({ slot, available, locallyBlocked }) => `
+        <button class="time-btn ${customerPortalRescheduleTime === slot ? "selected" : ""}" type="button" ${available && !locallyBlocked ? "" : "disabled"} onclick="selectCustomerPortalRescheduleTime('${slot}')">${slot}</button>
       `
     )
     .join("");

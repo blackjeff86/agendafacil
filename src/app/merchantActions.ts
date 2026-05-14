@@ -14,6 +14,7 @@ import { generateTimeSlotsForDate } from "../utils/dates";
 import { getErrorMessage } from "../utils/errors";
 import { serializeBusinessHourDayName } from "../utils/businessHours";
 import { readFileAsDataUrl } from "../utils/files";
+import { isProfessionalSlotBlocked } from "../utils/professionalAvailability";
 import { slugify } from "../utils/strings";
 import { showLoading, showToast, openModal } from "../ui/dom";
 import { closeAppointmentModal, closeModal, hasAppointmentBeenRescheduled, notifyAppointmentConfirmed, notifyCustomerAboutReschedule } from "./appointmentActions";
@@ -65,6 +66,21 @@ async function isAppointmentSlotAllowed(payload: {
   if (original && isSameAppointmentTiming(original, payload)) {
     return true;
   }
+
+  const service = state.services.find((item) => item.id === payload.service_id);
+  const professional = payload.professional_id ? state.professionals.find((item) => item.id === payload.professional_id) : null;
+  if (
+    professional &&
+    isProfessionalSlotBlocked({
+      professional,
+      date: payload.appointment_date,
+      time: payload.appointment_time,
+      durationMinutes: service?.duration || 0,
+    })
+  ) {
+    return false;
+  }
+
   return appointmentService.isSlotAvailable({
     businessId: payload.business_id,
     serviceId: payload.service_id,
