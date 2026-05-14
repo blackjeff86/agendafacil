@@ -1,6 +1,7 @@
 import { loadWorkspaceForBusiness } from "../services/workspaceService";
 import { state } from "../state/store";
 import { renderAdmin } from "../ui/render/merchantDashboard";
+import { startPendingOnboarding } from "./onboarding";
 
 export async function refreshAllBusinessData(): Promise<void> {
   if (!state.business) return;
@@ -13,4 +14,5 @@ export async function refreshAllBusinessData(): Promise<void> {
   state.hours = bundle.hours;
   state.professionalServices = bundle.professionalServices;
   renderAdmin();
+  startPendingOnboarding();
 }

@@ -3,7 +3,7 @@ import * as authService from "../services/authService";
 import { isSupportAccountEmail } from "../ui/render/supportPanel";
 import { normalizeSignupPlan, syncEntryViewFromUrl, switchAuthMode } from "./authUi";
 import { state } from "../state/store";
-import { applyBodyMode, showLoading, showScreen, showToast } from "../ui/dom";
+import { applyBodyMode, closeModal, openModal, showLoading, showScreen, showToast } from "../ui/dom";
 import { getErrorMessage } from "../utils/errors";
 import { slugify } from "../utils/strings";
 import { loadAdminExperience } from "./bootstrap";
@@ -11,6 +11,33 @@ import { createBusinessAndSeed } from "./businessLifecycle";
 
 function planNameFromTier(planTier: "starter" | "pro"): "Plano Starter" | "Plano Pro" {
   return planTier === "pro" ? "Plano Pro" : "Plano Starter";
+}
+
+function clearRecoveryUrl(): void {
+  const url = new URL(window.location.href || getAppBaseUrl());
+  url.searchParams.delete("recovery");
+  url.hash = "";
+  window.history.replaceState(window.history.state || {}, "", url);
+}
+
+export function isPasswordRecoveryMode(): boolean {
+  const url = new URL(window.location.href || getAppBaseUrl());
+  return url.searchParams.get("recovery") === "1" || url.hash.includes("type=recovery");
+}
+
+export function openPasswordRecoveryModal(): void {
+  switchAuthMode("login");
+  showScreen("loginPage");
+  openModal("modalPasswordRecovery");
+}
+
+export function closePasswordRecoveryModal(): void {
+  const nextPassword = document.getElementById("passwordRecoveryNew") as HTMLInputElement | null;
+  const confirmPassword = document.getElementById("passwordRecoveryConfirm") as HTMLInputElement | null;
+  if (nextPassword) nextPassword.value = "";
+  if (confirmPassword) confirmPassword.value = "";
+  clearRecoveryUrl();
+  closeModal("modalPasswordRecovery");
 }
 
 export function openAppEntry(mode: "signup" | "login", plan?: "starter" | "pro"): void {
@@ -41,6 +68,59 @@ export async function doLogin(): Promise<void> {
     if (error) throw error;
     state.session = data.session;
     state.user = data.user;
+    await loadAdminExperience();
+  } catch (error) {
+    console.error(error);
+    showToast(getErrorMessage(error));
+  } finally {
+    showLoading(false);
+  }
+}
+
+export async function requestPasswordReset(): Promise<void> {
+  const email = (document.getElementById("loginEmail") as HTMLInputElement | null)?.value.trim() || "";
+  if (!email) {
+    showToast("Digite seu e-mail para receber o link de recuperação.");
+    return;
+  }
+
+  showLoading(true);
+  try {
+    const redirectTo = `${getAppBaseUrl()}/?app=login&recovery=1`;
+    const { error } = await authService.resetPasswordForEmail(email, redirectTo);
+    if (error) throw error;
+    showToast("Enviamos o link de recuperação para seu e-mail.");
+  } catch (error) {
+    console.error(error);
+    showToast(getErrorMessage(error));
+  } finally {
+    showLoading(false);
+  }
+}
+
+export async function completePasswordRecovery(): Promise<void> {
+  const nextPassword = (document.getElementById("passwordRecoveryNew") as HTMLInputElement | null)?.value.trim() || "";
+  const confirmPassword = (document.getElementById("passwordRecoveryConfirm") as HTMLInputElement | null)?.value.trim() || "";
+
+  if (!nextPassword || !confirmPassword) {
+    showToast("Preencha e confirme a nova senha.");
+    return;
+  }
+  if (nextPassword.length < 6) {
+    showToast("A nova senha deve ter pelo menos 6 caracteres.");
+    return;
+  }
+  if (nextPassword !== confirmPassword) {
+    showToast("A confirmação da senha não confere.");
+    return;
+  }
+
+  showLoading(true);
+  try {
+    const { error } = await authService.updatePassword(nextPassword);
+    if (error) throw error;
+    closePasswordRecoveryModal();
+    showToast("Senha atualizada com sucesso.");
     await loadAdminExperience();
   } catch (error) {
     console.error(error);

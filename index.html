@@ -489,6 +489,7 @@
             <label for="loginPass">Senha</label>
             <input type="password" id="loginPass" placeholder="Sua senha" required />
           </div>
+          <button class="btn btn-link btn-sm" style="width:auto;align-self:flex-end;padding:0;" type="button" onclick="requestPasswordReset()">Esqueci minha senha</button>
           <button class="btn btn-brand mt-2" type="submit">Entrar</button>
         </form>
 
@@ -679,7 +680,7 @@
               <div class="section-title" style="margin:0;">Serviços oferecidos</div>
               <div class="text-sm text-sub">Organize o que seu negócio entrega e quem executa cada atendimento.</div>
             </div>
-            <button class="btn btn-sm btn-brand" style="width:auto" type="button" onclick="openServiceModal()">+ Serviço</button>
+            <button class="btn btn-sm btn-brand" id="btnAddService" style="width:auto" type="button" onclick="openServiceModal()">+ Serviço</button>
           </div>
           <div id="servicosList"></div>
         </div>
@@ -818,6 +819,7 @@
               <div class="support-footer-kicker">Suporte AgendaFácil</div>
               <div class="support-footer-title">Precisa de ajuda com seu painel?</div>
               <p class="support-footer-copy">Fale com nosso suporte pelo WhatsApp para tirar dúvidas, pedir ajuda na configuração ou resolver qualquer questão do seu salão.</p>
+              <button class="btn btn-ghost" type="button" onclick="restartOnboarding()">Ver guia de configuração novamente</button>
               <button class="support-footer-action" type="button" onclick="openSupportWhatsApp()">
                 <span>💬</span>
                 <span>Fale com um dos nossos especialistas</span>
@@ -1249,16 +1251,34 @@
     </div>
   </div>
 
-  <div class="modal-overlay modal-overlay-center" id="modalOnboardingGuide">
-    <div class="modal-sheet modal-sheet-compact onboarding-modal-sheet">
-      <div class="onboarding-progress" id="onboardingModalProgress">Passo 1 de 4</div>
-      <div class="font-bold text-lg mb-2" id="onboardingModalTitle">Comece pelos dados do salão</div>
-      <div class="text-sm text-sub mb-3" id="onboardingModalDescription">Preencha as informações principais para deixar sua página mais completa e profissional.</div>
-      <ul class="onboarding-list" id="onboardingModalList"></ul>
-      <div class="onboarding-actions">
-        <button class="btn btn-brand" id="onboardingPrimaryButton" type="button" onclick="nextOnboardingStep()">Próximo</button>
-        <button class="btn btn-ghost" type="button" onclick="closeOnboarding()">Fechar guia</button>
+  <div class="onboarding-guide hidden" id="onboardingGuide" data-placement="bottom">
+    <div class="onboarding-guide-progress" id="onboardingGuideProgress">Passo 1 de 8</div>
+    <div class="onboarding-guide-head">
+      <div class="font-bold text-lg" id="onboardingGuideTitle">Descrição do salão</div>
+      <button class="onboarding-guide-close" type="button" aria-label="Fechar dicas" onclick="closeOnboarding()">×</button>
+    </div>
+    <div class="text-sm text-sub" id="onboardingGuideDescription">Aqui você explica rapidamente o que o salão oferece para quem está conhecendo sua página.</div>
+    <div class="onboarding-guide-actions">
+      <button class="btn btn-brand btn-sm" id="onboardingPrimaryButton" type="button" onclick="nextOnboardingStep()">Próxima dica</button>
+      <button class="btn btn-link btn-sm" type="button" onclick="closeOnboarding()">Pular guia</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalPasswordRecovery">
+    <div class="modal-sheet modal-sheet-compact">
+      <div class="modal-handle"></div>
+      <div class="font-bold text-lg mb-2">Defina sua nova senha</div>
+      <div class="text-sm text-sub mb-4">Você entrou pelo link de recuperação. Escolha uma nova senha para concluir o acesso.</div>
+      <div class="input-group">
+        <label for="passwordRecoveryNew">Nova senha</label>
+        <input type="password" id="passwordRecoveryNew" placeholder="Digite sua nova senha" />
       </div>
+      <div class="input-group">
+        <label for="passwordRecoveryConfirm">Confirmar nova senha</label>
+        <input type="password" id="passwordRecoveryConfirm" placeholder="Repita a nova senha" />
+      </div>
+      <button class="btn btn-brand" type="button" onclick="completePasswordRecovery()">Salvar nova senha</button>
+      <button class="btn btn-ghost mt-2" type="button" onclick="closePasswordRecoveryModal()">Cancelar</button>
     </div>
   </div>
 

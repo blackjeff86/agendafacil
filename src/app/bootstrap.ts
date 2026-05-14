@@ -133,9 +133,13 @@ export async function bootstrapApp(): Promise<void> {
     state.session = session;
     state.user = session?.user ?? null;
 
-    authService.onAuthStateChange(async (_event, nextSession) => {
+    authService.onAuthStateChange(async (event, nextSession) => {
       state.session = nextSession;
       state.user = nextSession?.user ?? null;
+      if (event === "PASSWORD_RECOVERY") {
+        const { openPasswordRecoveryModal } = await import("./authActions");
+        openPasswordRecoveryModal();
+      }
     });
 
     if (clientPortalToken) {
@@ -149,6 +153,12 @@ export async function bootstrapApp(): Promise<void> {
       await loadPublicData(slug);
       showScreen("publicShell");
       pubGoRaw(0);
+      return;
+    }
+
+    const { isPasswordRecoveryMode, openPasswordRecoveryModal } = await import("./authActions");
+    if (isPasswordRecoveryMode()) {
+      openPasswordRecoveryModal();
       return;
     }
 

@@ -18,8 +18,12 @@ declare global {
     confirmCustomerPortalReschedule: () => Promise<void>;
     approveCustomerPortalAppointment: (appointmentId: string) => Promise<void>;
     closeCustomerPortalRescheduleModal: () => void;
+    requestPasswordReset: () => Promise<void>;
+    completePasswordRecovery: () => Promise<void>;
+    closePasswordRecoveryModal: () => void;
     nextOnboardingStep: () => void;
     closeOnboarding: () => void;
+    restartOnboarding: () => void;
     selectSecondDate: (dateIso: string) => void;
     selectSecondTime: (time: string) => void;
   }

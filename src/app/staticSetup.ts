@@ -48,11 +48,17 @@ export function initStaticSetup(): void {
   document.querySelectorAll(".modal-overlay").forEach((modal) => {
     modal.addEventListener("click", (event) => {
       if (event.target === modal) {
-        const appWindow = window as unknown as { closeHourFreezeModal?: () => void; closeOnboarding?: () => void };
+        const appWindow = window as unknown as {
+          closeHourFreezeModal?: () => void;
+          closeOnboarding?: () => void;
+          closePasswordRecoveryModal?: () => void;
+        };
         if ((modal as HTMLElement).id === "modalHourFreeze" && typeof appWindow.closeHourFreezeModal === "function") {
           appWindow.closeHourFreezeModal();
         } else if ((modal as HTMLElement).id === "modalOnboardingGuide" && typeof appWindow.closeOnboarding === "function") {
           appWindow.closeOnboarding();
+        } else if ((modal as HTMLElement).id === "modalPasswordRecovery" && typeof appWindow.closePasswordRecoveryModal === "function") {
+          appWindow.closePasswordRecoveryModal();
         } else {
           modal.classList.remove("open");
         }
